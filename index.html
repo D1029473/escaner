@@ -133,34 +133,71 @@
         window.requestAnimationFrame(loop);
     }
 
-    async function preguntarIA() {
-        const responseDiv = document.getElementById("ai-response");
-        const btn = document.getElementById("btn-ia");
-        responseDiv.style.display = "block";
-        responseDiv.innerHTML = '<div class="loader"></div> Pensando recetas...';
-        btn.disabled = true;
+async function preguntarIA() {
+    const responseDiv = document.getElementById("ai-response");
+    const btn = document.getElementById("btn-ia");
+    
+    // Limpieza de seguridad del token por si acaso
+    const cleanToken = SUPER_SECRET.replace(/\s/g, '');
 
-        const promptTxt = `<start_of_turn>user\nHe detectado: ${currentFood}. Dame 3 tips cortos de cocina para no desperdiciarlo.\n<end_of_turn>\n<start_of_turn>model`;
+    responseDiv.style.display = "block";
+    responseDiv.innerHTML = '<div class="loader"></div> Conectando con Gemma-2...';
+    btn.disabled = true;
 
-        try {
-            const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL_ID}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + SUPER_SECRET.trim() },
-                body: JSON.stringify({ inputs: promptTxt, parameters: { max_new_tokens: 150 } })
-            });
-            const data = await response.json();
-            
-            if (data.error && data.error.includes("currently loading")) {
-                setTimeout(preguntarIA, 5000);
-                return;
-            }
+    // Prompt optimizado
+    const promptTxt = `<start_of_turn>user\nHe detectado: ${currentFood}. Dame 3 tips rápidos de cocina para no desperdiciarlo.\n<end_of_turn>\n<start_of_turn>model`;
 
-            let res = data[0].generated_text.split("<start_of_turn>model")[1] || data[0].generated_text;
-            responseDiv.innerText = res.trim();
-        } catch (error) {
-            responseDiv.innerText = "Error de IA. Revisa la consola o el token.";
-        } finally { btn.disabled = false; }
+    try {
+        const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL_ID}`, {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json", 
+                "Authorization": "Bearer " + cleanToken 
+            },
+            body: JSON.stringify({ 
+                inputs: promptTxt, 
+                parameters: { 
+                    max_new_tokens: 150,
+                    return_full_text: false 
+                } 
+            })
+        });
+
+        const data = await response.json();
+
+        // 1. Manejo si el modelo está cargando
+        if (data.error && data.error.includes("currently loading")) {
+            responseDiv.innerHTML = '<div class="loader"></div> La IA se está despertando, reintentando...';
+            setTimeout(preguntarIA, 5000);
+            return;
+        }
+
+        // 2. Manejo de errores de la API (Token inválido, etc)
+        if (data.error) {
+            responseDiv.innerHTML = "<b>Error de API:</b> " + data.error;
+            return;
+        }
+
+        // 3. Extracción del texto (Maneja array u objeto)
+        let res = "";
+        if (Array.isArray(data)) {
+            res = data[0].generated_text;
+        } else if (data.generated_text) {
+            res = data.generated_text;
+        } else {
+            res = "La IA no pudo generar una respuesta clara.";
+        }
+
+        // Limpiar restos del prompt
+        responseDiv.innerText = res.replace("<start_of_turn>model", "").trim();
+
+    } catch (error) {
+        responseDiv.innerHTML = "<b>Error de Conexión:</b> No se pudo contactar con el servidor de IA.";
+        console.error(error);
+    } finally { 
+        btn.disabled = false; 
     }
+}
 
     window.onload = init;
 </script>
