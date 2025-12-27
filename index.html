@@ -137,63 +137,55 @@ async function preguntarIA() {
     const responseDiv = document.getElementById("ai-response");
     const btn = document.getElementById("btn-ia");
     
-    // Limpieza de seguridad del token por si acaso
-    const cleanToken = SUPER_SECRET.replace(/\s/g, '');
+    // Unimos y limpiamos el token de cualquier espacio accidental
+    const cleanToken = (t1 + t2 + t3).replace(/\s/g, '');
 
     responseDiv.style.display = "block";
-    responseDiv.innerHTML = '<div class="loader"></div> Conectando con Gemma-2...';
+    responseDiv.innerHTML = '<div class="loader"></div> Conectando con el cerebro de IA...';
     btn.disabled = true;
 
-    // Prompt optimizado
-    const promptTxt = `<start_of_turn>user\nHe detectado: ${currentFood}. Dame 3 tips rápidos de cocina para no desperdiciarlo.\n<end_of_turn>\n<start_of_turn>model`;
+    const promptTxt = `<start_of_turn>user\nAlimento: ${currentFood}. Dame 3 trucos cortos para no tirarlo a la basura.\n<end_of_turn>\n<start_of_turn>model`;
 
     try {
+        // Añadimos un timeout para que no se quede colgado si la red es lenta
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos máximo
+
         const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL_ID}`, {
             method: "POST",
             headers: { 
                 "Content-Type": "application/json", 
-                "Authorization": "Bearer " + cleanToken 
+                "Authorization": "Bearer " + cleanToken
             },
             body: JSON.stringify({ 
                 inputs: promptTxt, 
-                parameters: { 
-                    max_new_tokens: 150,
-                    return_full_text: false 
-                } 
-            })
+                parameters: { max_new_tokens: 150, return_full_text: false },
+                options: { wait_for_model: true } // Esto le dice a HF que espere si el modelo está cargando
+            }),
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            responseDiv.innerHTML = "<b>Aviso del servidor:</b> " + (errorData.error || "Error desconocido");
+            return;
+        }
+
         const data = await response.json();
-
-        // 1. Manejo si el modelo está cargando
-        if (data.error && data.error.includes("currently loading")) {
-            responseDiv.innerHTML = '<div class="loader"></div> La IA se está despertando, reintentando...';
-            setTimeout(preguntarIA, 5000);
-            return;
-        }
-
-        // 2. Manejo de errores de la API (Token inválido, etc)
-        if (data.error) {
-            responseDiv.innerHTML = "<b>Error de API:</b> " + data.error;
-            return;
-        }
-
-        // 3. Extracción del texto (Maneja array u objeto)
-        let res = "";
-        if (Array.isArray(data)) {
-            res = data[0].generated_text;
-        } else if (data.generated_text) {
-            res = data.generated_text;
-        } else {
-            res = "La IA no pudo generar una respuesta clara.";
-        }
-
-        // Limpiar restos del prompt
+        let res = Array.isArray(data) ? data[0].generated_text : data.generated_text;
+        
         responseDiv.innerText = res.replace("<start_of_turn>model", "").trim();
 
     } catch (error) {
-        responseDiv.innerHTML = "<b>Error de Conexión:</b> No se pudo contactar con el servidor de IA.";
-        console.error(error);
+        if (error.name === 'AbortError') {
+            responseDiv.innerHTML = "<b>La IA tardó mucho en responder.</b> Inténtalo de nuevo.";
+        } else {
+            // Este es el error que te salía. Ahora mostramos el motivo técnico exacto.
+            responseDiv.innerHTML = "<b>Error de Red:</b> " + error.message + ". Revisa que tengas internet y uses HTTPS.";
+        }
+        console.error("Detalle del error:", error);
     } finally { 
         btn.disabled = false; 
     }
