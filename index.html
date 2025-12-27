@@ -9,11 +9,11 @@
     <style>
         body { font-family: sans-serif; margin: 0; padding: 20px; background: #f4f7f6; text-align: center; }
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
-        #video-preview { width: 100%; border-radius: 10px; background: #000; margin-bottom: 10px; }
+        #webcam-container canvas { width: 100% !important; height: auto !important; border-radius: 10px; }
         .btn { width: 100%; padding: 15px; margin: 5px 0; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        #btn-ia { background: #2ecc71; color: white; }
+        #btn-ia { background: #2ecc71; color: white; font-size: 1.1rem; }
         #btn-ia:disabled { background: #ccc; }
-        #res { margin-top: 15px; text-align: left; font-size: 0.9rem; color: #333; background: #eee; padding: 10px; border-radius: 5px; display: none; }
+        #res { margin-top: 15px; text-align: left; font-size: 0.9rem; color: #333; background: #f9f9f9; padding: 15px; border-radius: 5px; display: none; border-left: 4px solid #2ecc71; }
     </style>
 </head>
 <body>
@@ -21,7 +21,7 @@
 <div class="card">
     <h3>SAVE AND TASTE</h3>
     <div id="webcam-container"></div>
-    <div id="label" style="font-weight: bold; margin: 10px 0;">Cargando...</div>
+    <div id="label" style="margin: 10px 0;">Cargando cámara...</div>
     <button class="btn" id="btn-ia" onclick="llamarIA()" disabled>✨ Obtener Receta</button>
     <div id="res"></div>
 </div>
@@ -30,19 +30,23 @@
     // --- CONFIGURACIÓN ---
     const URL_TM = "https://teachablemachine.withgoogle.com/models/_UsIOfbEQ/"; 
     const p1 = "hf_"; 
-    const p2 = "pmfFCdpGgVxFFkDtcvo"; 
-    const p3 = "VwSKEHbvqvdImFw";
+    const p2 = "OVHzzfPVZgQrJCPvW"; 
+    const p3 = "aPuTxZjtPwrqcKTrJ";
     // ---------------------
 
     let model, webcam, food = "";
 
     async function init() {
-        model = await tmImage.load(URL_TM + "model.json", URL_TM + "metadata.json");
-        webcam = new tmImage.Webcam(300, 300, false);
-        await webcam.setup({ facingMode: "environment" });
-        await webcam.play();
-        document.getElementById("webcam-container").appendChild(webcam.canvas);
-        window.requestAnimationFrame(loop);
+        try {
+            model = await tmImage.load(URL_TM + "model.json", URL_TM + "metadata.json");
+            webcam = new tmImage.Webcam(300, 300, false);
+            await webcam.setup({ facingMode: "environment" });
+            await webcam.play();
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            window.requestAnimationFrame(loop);
+        } catch (e) {
+            document.getElementById("label").innerText = "Error al iniciar cámara";
+        }
     }
 
     async function loop() {
@@ -55,7 +59,7 @@
                 food = pred[i].className;
             }
         }
-        if (max > 0.7) {
+        if (max > 0.75) {
             document.getElementById("label").innerText = "Detectado: " + food;
             document.getElementById("btn-ia").disabled = false;
         }
@@ -65,31 +69,37 @@
     async function llamarIA() {
         const out = document.getElementById("res");
         out.style.display = "block";
-        out.innerText = "Conectando con la IA...";
+        out.innerText = "Pensando recetas...";
         
-        // Reconstrucción ultra-limpia del token
-        const tok = (p1 + p2 + p3).trim().replace(/[^a-zA-Z0-9_]/g, "");
+        // Reconstrucción del token
+        const tok = (p1 + p2 + p3).trim();
 
         try {
             const r = await fetch("https://api-inference.huggingface.co/models/google/gemma-2-2b-it", {
                 method: "POST",
-                headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
+                headers: { 
+                    // Quitamos Content-Type para evitar que el navegador envíe un "preflight"
+                    "Authorization": "Bearer " + tok
+                },
                 body: JSON.stringify({ 
-                    inputs: "Dame 2 consejos para no tirar: " + food,
-                    parameters: { max_new_tokens: 80 }
+                    inputs: "Dame 2 consejos rápidos para aprovechar: " + food 
                 })
             });
 
-            const data = await r.json();
-            
-            if (data.error) {
-                out.innerText = "Error IA: " + JSON.stringify(data.error);
-            } else {
-                const txt = Array.isArray(data) ? data[0].generated_text : data.generated_text;
-                out.innerText = txt;
+            if (!r.ok) {
+                const errorData = await r.json();
+                throw new Error(errorData.error || "Error en el servidor");
             }
+
+            const data = await r.json();
+            const txt = Array.isArray(data) ? data[0].generated_text : data.generated_text;
+            out.innerText = txt || "No se recibió respuesta.";
+            
         } catch (e) {
-            out.innerText = "Error de conexión: " + e.message + ". Prueba a refrescar la página.";
+            // Si falla, mostramos el error exacto
+            out.innerText = "Error: " + e.message + "\n\nTip: Verifica que el Token sea nuevo y hayas aceptado la licencia de Gemma.";
+        } finally {
+            document.getElementById("btn-ia").disabled = false;
         }
     }
 
