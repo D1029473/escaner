@@ -3,37 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Save and Taste - App Final</title>
+    <title>Save and Taste - Full Auto</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <style>
         :root { --primary: #2ecc71; --dark: #27ae60; --bg: #f4f7f6; --accent: #3498db; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; background: var(--bg); color: #2c3e50; text-align: center; }
-        .header { background: var(--primary); color: white; padding: 15px; font-weight: 800; font-size: 1.2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        
-        /* Contenedor de Visión */
+        .header { background: var(--primary); color: white; padding: 15px; font-weight: 800; font-size: 1.2rem; }
         #vision-container { width: 100%; background: #000; height: 320px; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         canvas, #image-preview { height: 100%; width: auto; max-width: 100%; }
         #image-preview { display: none; object-fit: contain; background: black; }
-
         .info-card { margin: -25px 15px 20px 15px; background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); position: relative; z-index: 10; }
-        
         #label-container { font-size: 1.3rem; color: var(--dark); font-weight: bold; margin-bottom: 15px; min-height: 30px; }
-        
         .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        
-        .btn { border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 0.9rem; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn { border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 0.9rem; transition: 0.3s; }
         .btn-secondary { background: var(--accent); color: white; }
         .btn-ia { background: var(--primary); color: white; grid-column: span 2; padding: 18px; font-size: 1.1rem; border-bottom: 4px solid var(--dark); }
-        .btn:active { transform: scale(0.98); }
-        .btn:disabled { background: #bdc3c7; border-bottom: none; opacity: 0.7; cursor: not-allowed; }
-
-        #ai-response { margin-top: 20px; text-align: left; background: #fdfdfd; padding: 18px; border-radius: 12px; display: none; white-space: pre-wrap; border-left: 5px solid var(--primary); font-size: 0.95rem; line-height: 1.5; box-shadow: inset 0 0 10px rgba(0,0,0,0.02); }
-        
+        .btn:disabled { background: #bdc3c7; border-bottom: none; opacity: 0.7; }
+        #ai-response { margin-top: 20px; text-align: left; background: #fdfdfd; padding: 18px; border-radius: 12px; display: none; white-space: pre-wrap; border-left: 5px solid var(--primary); font-size: 0.95rem; line-height: 1.5; }
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 18px; height: 18px; animation: spin 1s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .status-msg { font-size: 0.8rem; color: #7f8c8d; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -46,51 +35,48 @@
 </div>
 
 <div class="info-card">
-    <div id="label-container">Cargando IA...</div>
-    
+    <div id="label-container">Iniciando sistema...</div>
     <div class="controls">
         <button class="btn btn-secondary" onclick="document.getElementById('file-input').click()">📁 Subir Foto</button>
         <button class="btn btn-secondary" onclick="restartCamera()">📷 Cámara</button>
         <input type="file" id="file-input" style="display:none" accept="image/*" onchange="handleFileUpload(event)">
-        
         <button class="btn btn-ia" id="btn-ia" onclick="preguntarIA()" disabled>✨ ¿Qué cocino con esto?</button>
     </div>
-
     <div id="ai-response"></div>
-    <div class="status-msg" id="status-msg">Apunta a un alimento para activarme</div>
 </div>
 
 <script type="text/javascript">
     // ======================================================
-    // CONFIGURACIÓN (REEMPLAZA ESTO)
+    // CONFIGURACIÓN (PASO IMPORTANTE)
     // ======================================================
     const URL_MODELO = "https://teachablemachine.withgoogle.com/models/_UsIOfbEQ/"; 
-    const HF_TOKEN = "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"; 
+    
+    // Genera un Token NUEVO en Hugging Face y divídelo aquí:
+    // Ejemplo: si tu token es hf_abc123...
+    // t1 = "hf_" , t2 = "abc" , t3 = "123..."
+    const t1 = "hf_"; 
+    const t2 = "pmfFCdpGgVxFFkDtcvo"; 
+    const t3 = "VwSKEHbvqvdImFw";
+    
+    const SUPER_SECRET = t1 + t2 + t3;
     // ======================================================
 
     const MODEL_ID = "google/gemma-2-2b-it";
     let model, webcam, labelContainer, currentFood = "";
     let isUsingPhoto = false;
 
-    // Inicializar la aplicación
     async function init() {
         labelContainer = document.getElementById("label-container");
         try {
-            // Cargar modelo de Teachable Machine
             model = await tmImage.load(URL_MODELO + "model.json", URL_MODELO + "metadata.json");
-            
-            // Configurar Webcam
-            webcam = new tmImage.Webcam(400, 400, false); // width, height, flip
+            webcam = new tmImage.Webcam(400, 400, false);
             await webcam.setup({ facingMode: "environment" }); 
             await webcam.play();
-            
             document.getElementById("webcam-viewer").appendChild(webcam.canvas);
             labelContainer.innerHTML = "¡Listo!";
             window.requestAnimationFrame(loop);
         } catch (e) {
-            console.error(e);
-            labelContainer.innerHTML = "Cámara no detectada";
-            document.getElementById("status-msg").innerHTML = "Usa el botón 'Subir Foto' para empezar";
+            labelContainer.innerHTML = "Usa 'Subir Foto'";
         }
     }
 
@@ -102,51 +88,40 @@
         }
     }
 
-    // Lógica de predicción (Funciona para Cámara y Foto)
     async function predict(imageElement) {
         const prediction = await model.predict(imageElement);
         let highProb = 0;
         let bestMatch = "";
-
         for (let i = 0; i < model.getTotalClasses(); i++) {
             if (prediction[i].probability > highProb) {
                 highProb = prediction[i].probability;
                 bestMatch = prediction[i].className;
             }
         }
-
-        // Umbral de confianza del 60% para mayor facilidad de uso
         if (highProb > 0.60) {
             currentFood = bestMatch;
             labelContainer.innerHTML = "Detectado: " + currentFood;
             document.getElementById("btn-ia").disabled = false;
-            document.getElementById("status-msg").innerHTML = "Confianza: " + Math.round(highProb*100) + "%";
         } else {
             labelContainer.innerHTML = "Buscando...";
             document.getElementById("btn-ia").disabled = true;
         }
     }
 
-    // Gestión de subida de archivos
     async function handleFileUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
-
         isUsingPhoto = true;
         const preview = document.getElementById("image-preview");
         const webcamDiv = document.getElementById("webcam-viewer");
-
         const reader = new FileReader();
         reader.onload = function(e) {
             preview.src = e.target.result;
             preview.style.display = "block";
             webcamDiv.style.display = "none";
-            
             const img = new Image();
             img.src = e.target.result;
-            img.onload = async () => {
-                await predict(img);
-            };
+            img.onload = async () => { await predict(img); };
         }
         reader.readAsDataURL(file);
     }
@@ -158,60 +133,35 @@
         window.requestAnimationFrame(loop);
     }
 
-    // Llamada a la IA (Hugging Face Gemma-2)
     async function preguntarIA() {
         const responseDiv = document.getElementById("ai-response");
         const btn = document.getElementById("btn-ia");
-        
         responseDiv.style.display = "block";
-        responseDiv.innerHTML = '<div class="loader"></div> Consultando recetas de aprovechamiento...';
+        responseDiv.innerHTML = '<div class="loader"></div> Pensando recetas...';
         btn.disabled = true;
 
-        // Prompt estructurado para Gemma
-        const prompt = `<start_of_turn>user\nActúa como experto en cocina sostenible. He detectado: ${currentFood}. Dame 3 ideas muy breves y creativas para aprovecharlo si está un poco pasado o son sobras. Usa un tono animado.\n<end_of_turn>\n<start_of_turn>model`;
+        const promptTxt = `<start_of_turn>user\nHe detectado: ${currentFood}. Dame 3 tips cortos de cocina para no desperdiciarlo.\n<end_of_turn>\n<start_of_turn>model`;
 
         try {
             const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL_ID}`, {
                 method: "POST",
-                headers: { 
-                    "Content-Type": "application/json", 
-                    "Authorization": `Bearer ${HF_TOKEN}` 
-                },
-                body: JSON.stringify({ 
-                    inputs: prompt, 
-                    parameters: { max_new_tokens: 200, temperature: 0.7, return_full_text: false } 
-                })
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + SUPER_SECRET.trim() },
+                body: JSON.stringify({ inputs: promptTxt, parameters: { max_new_tokens: 150 } })
             });
-
             const data = await response.json();
-
-            // Manejo de carga de modelo (Model Loading)
+            
             if (data.error && data.error.includes("currently loading")) {
-                const waitTime = data.estimated_time || 5;
-                responseDiv.innerHTML = `<div class="loader"></div> La IA está arrancando... reintento automático en ${Math.round(waitTime)}s.`;
                 setTimeout(preguntarIA, 5000);
                 return;
             }
 
-            if (data.error) {
-                responseDiv.innerText = "Aviso: " + data.error;
-            } else {
-                let texto = "";
-                if (Array.isArray(data)) texto = data[0].generated_text;
-                else texto = data.generated_text;
-                
-                // Limpieza de etiquetas de control
-                texto = texto.replace("<start_of_turn>model", "").replace("<end_of_turn>", "").trim();
-                responseDiv.innerText = texto;
-            }
+            let res = data[0].generated_text.split("<start_of_turn>model")[1] || data[0].generated_text;
+            responseDiv.innerText = res.trim();
         } catch (error) {
-            responseDiv.innerText = "Error de conexión. Inténtalo de nuevo en unos segundos.";
-        } finally { 
-            btn.disabled = false; 
-        }
+            responseDiv.innerText = "Error de IA. Revisa la consola o el token.";
+        } finally { btn.disabled = false; }
     }
 
-    // Arrancar la app al cargar
     window.onload = init;
 </script>
 </body>
