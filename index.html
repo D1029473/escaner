@@ -109,42 +109,46 @@
         document.getElementById("webcam-viewer").style.display = "block"; window.requestAnimationFrame(loop);
     }
 
-    async function preguntarIA() {
-        const responseDiv = document.getElementById("ai-response");
-        const btn = document.getElementById("btn-ia");
-        
-        // Reconstrucción limpia del token
-        const fullToken = (p1 + p2 + p3).replace(/[\n\r\s\t]/g, ""); 
+async function preguntarIA() {
+    const responseDiv = document.getElementById("ai-response");
+    const btn = document.getElementById("btn-ia");
+    
+    // Reconstrucción del token sin espacios ni saltos de línea
+    const cleanToken = (p1 + p2 + p3).replace(/[\n\r\s\t]/g, "").trim();
 
-        responseDiv.style.display = "block";
-        responseDiv.innerHTML = '<div class="loader"></div> Consultando IA...';
-        btn.disabled = true;
+    responseDiv.style.display = "block";
+    responseDiv.innerHTML = '<div class="loader"></div> Conectando...';
+    btn.disabled = true;
 
-        try {
-            const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL_ID}`, {
-                method: "POST",
-                headers: { 
-                    "Authorization": `Bearer ${fullToken}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ 
-                    inputs: `<start_of_turn>user\nDame 3 trucos cortos para aprovechar: ${currentFood}\n<end_of_turn>\n<start_of_turn>model`,
-                    parameters: { max_new_tokens: 150 }
-                })
-            });
+    try {
+        const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL_ID}`, {
+            method: "POST",
+            headers: { 
+                "Authorization": "Bearer " + cleanToken,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ 
+                inputs: "Hola, dame un consejo corto para aprovechar " + currentFood 
+            })
+        });
 
-            const data = await response.json();
+        if (!response.ok) {
+            const errorTxt = await response.text();
+            responseDiv.innerHTML = "<b>Error del Servidor:</b> " + errorTxt;
+            return;
+        }
 
-            if (data.error) {
-                responseDiv.innerHTML = "<b>Error:</b> " + JSON.stringify(data.error);
-            } else {
-                let text = Array.isArray(data) ? data[0].generated_text : data.generated_text;
-                responseDiv.innerText = text.split("<start_of_turn>model")[1] || text;
-            }
-        } catch (err) {
-            responseDiv.innerHTML = "<b>Error de Conexión.</b> Revisa que el Token sea nuevo y tengas Internet.";
-        } finally { btn.disabled = false; }
+        const data = await response.json();
+        responseDiv.innerText = Array.isArray(data) ? data[0].generated_text : data.generated_text;
+
+    } catch (err) {
+        // Esto nos dirá si es un problema de SSL, de CORS o de Red
+        responseDiv.innerHTML = "<b>DETALLE TÉCNICO DEL ERROR:</b> " + err.message;
+        console.log(err);
+    } finally { 
+        btn.disabled = false; 
     }
+}
 
     window.onload = init;
 </script>
