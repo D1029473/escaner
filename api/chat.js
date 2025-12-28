@@ -16,8 +16,8 @@ export default async function handler(req, res) {
 
         // --- TOKEN (Asegúrate de que no haya espacios en las partes) ---
         const t1 = "hf_"; 
-        const t2 = "pmfFCdpGgVxFFkDtcvo"; 
-        const t3 = "VwSKEHbvqvdImFw";
+        const t2 = "GTlTyNnsmLcgrIHSclQrl"; 
+        const t3 = "PZaKwAvknMCav";
         const cleanToken = (t1 + t2 + t3).trim();
 
         const response = await fetch("https://router.huggingface.co/hf-inference/models/google/gemma-2-9b-it", {
