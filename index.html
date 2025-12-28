@@ -3,44 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Save and Taste - Scanner</title>
+    <title>Save and Taste</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <style>
         :root { --p: #2ecc71; --s: #2c3e50; }
-        body { font-family: sans-serif; margin: 0; padding: 20px; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; }
-        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #f4f7f6; text-align: center; }
+        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
         #webcam-container canvas { width: 100% !important; border-radius: 15px; background: #000; }
-        .btn { width: 100%; padding: 15px; margin-top: 10px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+        .btn { width: 100%; padding: 16px; margin-top: 10px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1rem; }
         #btn-ia { background: var(--p); color: white; }
         #btn-ia:disabled { background: #ccc; }
         #res { margin-top: 20px; text-align: left; background: #f9f9f9; padding: 15px; border-radius: 10px; border-left: 5px solid var(--p); display: none; white-space: pre-wrap; }
-        .upload-area { background: #3498db; color: white; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2 style="color:var(--s); margin-top:0;">SAVE AND TASTE</h2>
-    
+    <h2 style="color:var(--s);">SAVE AND TASTE</h2>
     <div id="webcam-container"></div>
-    <img id="label-img" style="width:100%; display:none; border-radius:15px;">
+    <div id="label" style="margin:15px 0; font-weight:bold;">Cargando sistema...</div>
     
-    <div id="label" style="margin:15px 0; font-weight:bold;">Cargando IA...</div>
-    
-    <button class="btn upload-area" onclick="document.getElementById('file-in').click()">📁 Subir imagen</button>
+    <button class="btn" style="background:#3498db; color:white;" onclick="document.getElementById('file-in').click()">📁 Subir imagen</button>
     <input type="file" id="file-in" style="display:none" accept="image/*" onchange="handleFile(event)">
     
     <button class="btn" id="btn-ia" onclick="preguntarIA()" disabled>✨ ¿Qué cocino con esto?</button>
-    
     <div id="res"></div>
 </div>
 
 <script>
-    // --- CONFIGURACIÓN ---
-    const URL_TM = "https://teachablemachine.withgoogle.com/models/_UsIOfbEQ/"; 
-    // ---------------------
-
+    const URL_TM = "TU_URL_DE_TEACHABLE_MACHINE_AQUI/"; 
     let model, webcam, food = "";
 
     async function init() {
@@ -50,21 +42,19 @@
             await webcam.setup({ facingMode: "environment" });
             await webcam.play();
             document.getElementById("webcam-container").appendChild(webcam.canvas);
-            document.getElementById("label").innerText = "Listo para escanear";
+            document.getElementById("label").innerText = "Listo";
             loop();
-        } catch (e) { document.getElementById("label").innerText = "Cámara no disponible"; }
+        } catch (e) { document.getElementById("label").innerText = "Cámara no activa"; }
     }
 
     async function loop() {
-        if (webcam.canvas) {
-            webcam.update();
-            await predict(webcam.canvas);
-            requestAnimationFrame(loop);
-        }
+        webcam.update();
+        await predict(webcam.canvas);
+        requestAnimationFrame(loop);
     }
 
-    async function predict(imgElement) {
-        const pred = await model.predict(imgElement);
+    async function predict(img) {
+        const pred = await model.predict(img);
         let max = 0;
         for (let i = 0; i < pred.length; i++) {
             if (pred[i].probability > max) { max = pred[i].probability; food = pred[i].className; }
@@ -78,13 +68,10 @@
     function handleFile(e) {
         const reader = new FileReader();
         reader.onload = (event) => {
-            const img = document.getElementById("label-img");
-            img.src = event.target.result;
-            img.style.display = "block";
-            document.getElementById("webcam-container").style.display = "none";
             const tempImg = new Image();
             tempImg.src = event.target.result;
             tempImg.onload = () => predict(tempImg);
+            document.getElementById("label").innerText = "Imagen procesada";
         };
         reader.readAsDataURL(e.target.files[0]);
     }
@@ -95,22 +82,16 @@
         out.innerText = "Pensando recetas...";
 
         try {
-            // Llamamos a nuestra propia API en Vercel
             const r = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ food: food })
             });
-
             const data = await r.json();
-            // Extraemos el texto de la respuesta de Mistral
             const rawText = Array.isArray(data) ? data[0].generated_text : data.generated_text;
             out.innerText = rawText.split("[/INST]").pop().trim();
-        } catch (e) {
-            out.innerText = "Error: El servidor no responde. ¿Has desplegado en Vercel?";
-        }
+        } catch (e) { out.innerText = "Error en el servidor."; }
     }
-
     init();
 </script>
 </body>
