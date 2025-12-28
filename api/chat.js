@@ -20,7 +20,7 @@ export default async function handler(req, res) {
         const t3 = "WaPuTxZjtPwrqcKTrJ";
         const cleanToken = (t1 + t2 + t3).trim();
 
-        const response = await fetch("https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.2", {
+        const response = await fetch("https://router.huggingface.co/hf-inference/models/google/gemma-2-9b-it", {
             method: "POST",
             headers: { 
                 "Authorization": `Bearer ${cleanToken}`,
