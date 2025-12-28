@@ -7,15 +7,16 @@ export default async function handler(req, res) {
 
     try {
         const { food } = req.body;
-        
-        // --- TU TOKEN FRAGMENTADO ---
+        if (!food) return res.status(200).json({ error_detail: "No se detectó alimento" });
+
+        // --- TOKEN (Limpio de espacios) ---
         const t1 = "hf_"; 
         const t2 = "xXFSCbBADUDCG"; 
         const t3 = "kLwjbmiTfzAncNMrHxlIz";
         const cleanToken = (t1 + t2 + t3).replace(/\s+/g, '').trim();
 
-        // Esta es la URL que te pide el error, pero con el endpoint de CHAT
-        const apiUrl = "https://router.huggingface.co/hf-inference/v1/chat/completions";
+        // NUEVA URL: Formato directo del Router para Inferencia
+        const apiUrl = "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.2";
 
         const response = await fetch(apiUrl, {
             method: "POST",
@@ -24,29 +25,36 @@ export default async function handler(req, res) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({ 
-                model: "mistralai/Mistral-7B-Instruct-v0.2",
-                messages: [
-                    { 
-                        role: "user", 
-                        content: `Soy un usuario de Save and Taste. He detectado ${food}. Dame 3 consejos muy cortos para aprovecharlo.` 
-                    }
-                ],
-                max_tokens: 120
+                inputs: `[INST] Dame 3 consejos de cocina cortos para aprovechar: ${food} [/INST]`,
+                parameters: { max_new_tokens: 100 }
             }),
         });
 
-        const data = await response.json();
+        const textData = await response.text();
+        
+        try {
+            const jsonData = JSON.parse(textData);
+            
+            if (!response.ok) {
+                return res.status(200).json({ error_detail: jsonData.error || "Error en el modelo" });
+            }
 
-        if (!response.ok) {
-            return res.status(200).json({ error_detail: data.error || "Error en el Router" });
+            // El modelo devuelve un array con el texto generado
+            let output = Array.isArray(jsonData) ? jsonData[0].generated_text : jsonData.generated_text;
+            
+            // Limpiar la respuesta para que no incluya la pregunta
+            if (output.includes("[/INST]")) {
+                output = output.split("[/INST]").pop().trim();
+            }
+
+            return res.status(200).json({ generated_text: output });
+
+        } catch (e) {
+            // Si esto falla, veremos qué texto exacto está devolviendo el Router
+            return res.status(200).json({ error_detail: "Respuesta del Router: " + textData.substring(0, 50) });
         }
 
-        // En el formato /v1/chat/completions, la respuesta viene aquí:
-        const aiResponse = data.choices[0].message.content;
-
-        return res.status(200).json({ generated_text: aiResponse });
-
     } catch (error) {
-        return res.status(500).json({ error_detail: "Error crítico: " + error.message });
+        return res.status(500).json({ error_detail: "Error de servidor: " + error.message });
     }
 }
