@@ -7,37 +7,48 @@ export default async function handler(req, res) {
 
     try {
         const { food } = req.body;
-        
-        // --- TOKEN (Asegúrate de que estas partes NO tengan espacios dentro de las comillas) ---
+        if (!food) return res.status(200).json({ error_detail: "No se recibió alimento" });
+
+        // --- TOKEN (Asegúrate de que las partes no tengan espacios) ---
         const t1 = "hf_"; 
-        const t2 = "GTlTyNnsmLcgrIHSclQrl"; 
-        const t3 = "PZaKwAvknMCav";
-        
-        // Esta línea elimina cualquier espacio, tabulación o salto de línea oculto
+        const t2 = "xXFSCbBADUDCG"; 
+        const t3 = "kLwjbmiTfzAncNMrHxlIz";
         const cleanToken = (t1 + t2 + t3).replace(/\s+/g, '').trim();
 
-        const response = await fetch("https://router.huggingface.co/hf-inference/models/google/gemma-2-9b-it", {
+        // URL CORREGIDA: Sin "google/" y usando Mistral para asegurar compatibilidad
+        const apiUrl = "https://router.huggingface.co/hf-inference/v1/chat/completions";
+
+        const response = await fetch(apiUrl, {
             method: "POST",
             headers: { 
                 "Authorization": `Bearer ${cleanToken}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({ 
-                inputs: `[INST] Soy un experto en cocina. He detectado ${food}. Dame 3 consejos cortos y creativos para no desperdiciarlo. [/INST]`,
-                parameters: { max_new_tokens: 150, temperature: 0.7 }
+                model: "mistralai/Mistral-7B-Instruct-v0.2",
+                messages: [
+                    { role: "user", content: `Tengo ${food}. Dame 3 consejos cortos para no desperdiciarlo.` }
+                ],
+                max_tokens: 150
             }),
         });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            // Esto nos dirá si el error es de permisos o de token
-            return res.status(200).json({ error_detail: data.error || "Error de validación" });
+        // Verificamos si la respuesta es texto plano (como el "Not Found") antes de convertir a JSON
+        const textData = await response.text();
+        
+        try {
+            const jsonData = JSON.parse(textData);
+            if (!response.ok) {
+                return res.status(200).json({ error_detail: jsonData.error || "Error en API" });
+            }
+            // El formato de chat completions devuelve la respuesta en choices
+            const aiMessage = jsonData.choices[0].message.content;
+            return res.status(200).json({ generated_text: aiMessage });
+        } catch (e) {
+            return res.status(200).json({ error_detail: "La API respondió algo no válido: " + textData });
         }
 
-        return res.status(200).json(data);
-
     } catch (error) {
-        return res.status(500).json({ error_detail: "Fallo de conexión: " + error.message });
+        return res.status(500).json({ error_detail: "Error en el servidor: " + error.message });
     }
 }
