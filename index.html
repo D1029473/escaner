@@ -76,22 +76,32 @@
         reader.readAsDataURL(e.target.files[0]);
     }
 
-    async function preguntarIA() {
-        const out = document.getElementById("res");
-        out.style.display = "block";
-        out.innerText = "Pensando recetas...";
+async function preguntarIA() {
+    const out = document.getElementById("res");
+    out.style.display = "block";
+    out.innerText = "Consultando a la IA...";
 
-        try {
-            const r = await fetch("/api/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ food: food })
-            });
-            const data = await r.json();
-            const rawText = Array.isArray(data) ? data[0].generated_text : data.generated_text;
-            out.innerText = rawText.split("[/INST]").pop().trim();
-        } catch (e) { out.innerText = "Error en el servidor."; }
+    try {
+        const r = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ food: food })
+        });
+
+        const data = await r.json();
+        
+        // Si el backend nos manda un detalle del error
+        if (data.error_detail) {
+            out.innerText = "Aviso de la IA: " + JSON.stringify(data.error_detail);
+            return;
+        }
+
+        const rawText = Array.isArray(data) ? data[0].generated_text : data.generated_text;
+        out.innerText = rawText.split("[/INST]").pop().trim();
+    } catch (e) {
+        out.innerText = "Error: El servidor no responde.";
     }
+}
     init();
 </script>
 </body>
