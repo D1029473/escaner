@@ -7,327 +7,87 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <style>
-        :root {
-            --primary: #27ae60;
-            --primary-light: #2ecc71;
-            --accent: #e67e22;
-            --dark: #2c3e50;
-            --light: #f9fbf9;
-            --white: #ffffff;
-            --shadow: 0 12px 40px rgba(0,0,0,0.12);
-        }
-
-        body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            background-color: var(--light);
-            color: var(--dark);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        /* Cabecera Elegante */
-        .header {
-            width: 100%;
-            background: var(--white);
-            padding: 20px 0;
-            text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .header h1 {
-            margin: 0;
-            font-size: 1.2rem;
-            letter-spacing: 2px;
-            color: var(--primary);
-            font-weight: 800;
-        }
-
-        /* Contenedor de Visión */
-        #vision-container {
-            width: 100%;
-            max-width: 500px;
-            height: 380px;
-            background: #1a1a1a;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        canvas, #image-preview {
-            height: 100%;
-            width: auto;
-            object-fit: cover;
-        }
-
-        /* Escáner animado */
-        .scanner-line {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: var(--primary-light);
-            box-shadow: 0 0 15px var(--primary-light);
-            animation: scan 3s infinite ease-in-out;
-            z-index: 5;
-            opacity: 0.7;
-        }
-
-        @keyframes scan {
-            0%, 100% { top: 0%; }
-            50% { top: 100%; }
-        }
-
-        /* Tarjeta de Información */
-        .info-card {
-            width: 90%;
-            max-width: 420px;
-            margin: -40px 20px 30px 20px;
-            background: var(--white);
-            border-radius: 30px;
-            padding: 30px;
-            box-shadow: var(--shadow);
-            z-index: 10;
-            box-sizing: border-box;
-        }
-
-        #label-container {
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #95a5a6;
-            margin-bottom: 8px;
-        }
-
-        #food-name {
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: var(--dark);
-            margin-bottom: 25px;
-            display: block;
-        }
-
-        /* Botones Modernos */
-        .button-group {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .btn {
-            border: none;
-            padding: 18px;
-            border-radius: 18px;
-            font-weight: 700;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .btn-upload {
-            background: #f0f3f1;
-            color: var(--dark);
-        }
-
-        .btn-ia {
-            background: var(--primary);
-            color: white;
-            box-shadow: 0 8px 20px rgba(39, 174, 96, 0.3);
-        }
-
-        .btn-ia:disabled {
-            background: #dcdde1;
-            box-shadow: none;
-            cursor: not-allowed;
-        }
-
-        .btn:active { transform: scale(0.96); }
-
-        /* Respuesta de la IA */
-        #ai-response {
-            margin-top: 25px;
-            text-align: left;
-            background: #fdfdfd;
-            padding: 20px;
-            border-radius: 20px;
-            display: none;
-            border: 1px solid #edf2f0;
-            line-height: 1.6;
-            font-size: 0.95rem;
-            color: #444;
-        }
-
-        .ai-title {
-            color: var(--primary);
-            font-weight: 800;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* Loader refinado */
-        .loader {
-            width: 18px;
-            height: 18px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 0.8s linear infinite;
-        }
-
+        :root { --primary: #27ae60; --primary-light: #2ecc71; --dark: #2c3e50; --light: #f9fbf9; --white: #ffffff; }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; background-color: var(--light); color: var(--dark); display: flex; flex-direction: column; align-items: center; }
+        .header { width: 100%; background: var(--white); padding: 20px 0; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
+        .header h1 { margin: 0; font-size: 1.2rem; letter-spacing: 2px; color: var(--primary); font-weight: 800; }
+        #vision-container { width: 100%; max-width: 500px; height: 380px; background: #000; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+        canvas, #image-preview { height: 100%; width: auto; object-fit: cover; }
+        .scanner-line { position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: var(--primary-light); box-shadow: 0 0 15px var(--primary-light); animation: scan 3s infinite ease-in-out; z-index: 5; opacity: 0.7; }
+        @keyframes scan { 0%, 100% { top: 0%; } 50% { top: 100%; } }
+        .info-card { width: 90%; max-width: 420px; margin: -40px 20px 30px 20px; background: var(--white); border-radius: 30px; padding: 30px; box-shadow: 0 12px 40px rgba(0,0,0,0.12); z-index: 10; box-sizing: border-box; }
+        #food-name { font-size: 1.8rem; font-weight: 800; color: var(--dark); margin-bottom: 25px; display: block; }
+        .btn { border: none; padding: 18px; border-radius: 18px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: all 0.3s ease; width: 100%; margin-bottom: 10px; }
+        .btn-ia { background: var(--primary); color: white; box-shadow: 0 8px 20px rgba(39, 174, 96, 0.3); }
+        .btn-ia:disabled { background: #dcdde1; box-shadow: none; }
+        #ai-response { margin-top: 25px; text-align: left; background: #fdfdfd; padding: 20px; border-radius: 20px; display: none; border: 1px solid #edf2f0; line-height: 1.6; }
+        .loader { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; display: inline-block; }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        #image-preview { display: none; width: 100%; border-radius: 0; }
     </style>
 </head>
 <body>
-
-<div class="header">
-    <h1>SAVE AND TASTE</h1>
-</div>
-
-<div id="vision-container">
-    <div class="scanner-line"></div>
-    <div id="webcam-viewer"></div>
-    <img id="image-preview" src="#" alt="Vista previa">
-</div>
-
-<div class="info-card">
-    <div id="label-container">Estado del sistema</div>
-    <span id="food-name">Iniciando...</span>
-    
-    <div class="button-group">
-        <button class="btn btn-ia" id="btn-ia" onclick="preguntarIA()" disabled>
-            ✨ Obtener trucos de cocina
-        </button>
-        <button class="btn btn-upload" onclick="document.getElementById('file-input').click()">
-            📷 Subir una foto
-        </button>
+    <div class="header"><h1>SAVE AND TASTE</h1></div>
+    <div id="vision-container"><div class="scanner-line"></div><div id="webcam-viewer"></div><img id="image-preview" src="#"></div>
+    <div class="info-card">
+        <span id="food-name">Iniciando...</span>
+        <button class="btn btn-ia" id="btn-ia" onclick="preguntarIA()" disabled>✨ Obtener trucos de cocina</button>
+        <button class="btn" style="background:#f0f3f1" onclick="document.getElementById('file-input').click()">📷 Subir foto</button>
         <input type="file" id="file-input" style="display:none" accept="image/*" onchange="handleFileUpload(event)">
+        <div id="ai-response"><b>🌱 Sugerencias:</b><br><span id="ai-text"></span></div>
     </div>
-    
-    <div id="ai-response">
-        <div class="ai-title">🌱 Sugerencias de aprovechamiento:</div>
-        <div id="ai-text"></div>
-    </div>
-</div>
 
-<script type="text/javascript">
-    // REEMPLAZA CON TU URL REAL
+<script>
     const URL_MODELO = "https://teachablemachine.withgoogle.com/models/_UsIOfbEQ/"; 
-
-    let model, webcam, currentFood = "";
-    let isUsingPhoto = false;
+    let model, webcam, currentFood = "", isUsingPhoto = false;
 
     async function init() {
-        const foodDisplay = document.getElementById("food-name");
         try {
             model = await tmImage.load(URL_MODELO + "model.json", URL_MODELO + "metadata.json");
             webcam = new tmImage.Webcam(400, 400, false);
             await webcam.setup({ facingMode: "environment" }); 
             await webcam.play();
             document.getElementById("webcam-viewer").appendChild(webcam.canvas);
-            foodDisplay.innerHTML = "Listo";
-            window.requestAnimationFrame(loop);
-        } catch (e) {
-            foodDisplay.innerHTML = "Usa subir foto";
-        }
+            document.getElementById("food-name").innerText = "Listo";
+            loop();
+        } catch (e) { document.getElementById("food-name").innerText = "Error cámara"; }
     }
 
-    async function loop() {
-        if (!isUsingPhoto) {
-            webcam.update();
-            await predict(webcam.canvas);
-            window.requestAnimationFrame(loop);
-        }
+    async function loop() { if (!isUsingPhoto) { webcam.update(); await predict(webcam.canvas); window.requestAnimationFrame(loop); } }
+
+    async function predict(img) {
+        const pred = await model.predict(img);
+        let high = 0; let match = "";
+        for (let i = 0; i < pred.length; i++) { if (pred[i].probability > high) { high = pred[i].probability; match = pred[i].className; } }
+        if (high > 0.65) { currentFood = match; document.getElementById("food-name").innerText = match; document.getElementById("btn-ia").disabled = false; }
     }
 
-    async function predict(imageElement) {
-        const prediction = await model.predict(imageElement);
-        let highProb = 0;
-        let bestMatch = "";
-        
-        for (let i = 0; i < model.getTotalClasses(); i++) {
-            if (prediction[i].probability > highProb) {
-                highProb = prediction[i].probability;
-                bestMatch = prediction[i].className;
-            }
-        }
-
-        const foodDisplay = document.getElementById("food-name");
-        if (highProb > 0.65) {
-            currentFood = bestMatch;
-            foodDisplay.innerHTML = currentFood;
-            document.getElementById("btn-ia").disabled = false;
-        } else {
-            foodDisplay.innerHTML = "Escaneando...";
-            document.getElementById("btn-ia").disabled = true;
-        }
-    }
-
-    async function handleFileUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        isUsingPhoto = true;
-        const preview = document.getElementById("image-preview");
-        const webcamDiv = document.getElementById("webcam-viewer");
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.style.display = "block";
-            webcamDiv.style.display = "none";
-            const img = new Image();
-            img.src = e.target.result;
-            img.onload = async () => { await predict(img); };
-        }
-        reader.readAsDataURL(file);
+    async function handleFileUpload(e) {
+        isUsingPhoto = true; const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image(); img.src = event.target.result;
+            document.getElementById("image-preview").src = img.src;
+            document.getElementById("image-preview").style.display = "block";
+            document.getElementById("webcam-viewer").style.display = "none";
+            img.onload = () => predict(img);
+        };
+        reader.readAsDataURL(e.target.files[0]);
     }
 
     async function preguntarIA() {
-        const responseDiv = document.getElementById("ai-response");
-        const responseText = document.getElementById("ai-text");
-        const btn = document.getElementById("btn-ia");
-        
-        responseDiv.style.display = "block";
-        responseText.innerHTML = '<div class="loader"></div> Consultando al chef inteligente...';
-        btn.disabled = true;
-
+        const txt = document.getElementById("ai-text");
+        document.getElementById("ai-response").style.display = "block";
+        txt.innerHTML = '<div class="loader"></div> Consultando...';
         try {
-            const response = await fetch("/api/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ food: currentFood })
-            });
-
-            const data = await response.json();
-            let resText = Array.isArray(data) ? data[0].generated_text : data.generated_text;
-            
-            if (resText.includes("[/INST]")) {
-                resText = resText.split("[/INST]").pop();
+            const r = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ food: currentFood }) });
+            const data = await r.json();
+            if (data.error_detail) { txt.innerText = "Error: " + JSON.stringify(data.error_detail); }
+            else {
+                let res = Array.isArray(data) ? data[0].generated_text : data.generated_text;
+                txt.innerText = res.includes("[/INST]") ? res.split("[/INST]").pop().trim() : res;
             }
-            
-            responseText.innerText = resText.trim();
-
-        } catch (error) {
-            responseText.innerHTML = "Ocurrió un error al conectar con la IA.";
-        } finally {
-            btn.disabled = false;
-        }
+        } catch (e) { txt.innerText = "Error de conexión."; }
     }
-
-    window.onload = init;
+    init();
 </script>
 </body>
 </html>
