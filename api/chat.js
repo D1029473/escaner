@@ -9,14 +9,14 @@ export default async function handler(req, res) {
         const { food } = req.body;
         if (!food) return res.status(200).json({ error_detail: "No se recibió alimento" });
 
-        // --- TOKEN (Asegúrate de que las partes no tengan espacios) ---
+        // --- TU TOKEN AQUÍ ---
         const t1 = "hf_"; 
-        const t2 = "xXFSCbBADUDCG"; 
-        const t3 = "kLwjbmiTfzAncNMrHxlIz";
+        const t2 = "xXFSCbBADUDCG"; // Pega la segunda parte
+        const t3 = "kLwjbmiTfzAncNMrHxlIz"; // Pega la tercera parte
         const cleanToken = (t1 + t2 + t3).replace(/\s+/g, '').trim();
 
-        // URL CORREGIDA: Sin "google/" y usando Mistral para asegurar compatibilidad
-        const apiUrl = "https://router.huggingface.co/hf-inference/v1/chat/completions";
+        // URL directa al modelo (Esta es la que menos falla)
+        const apiUrl = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
 
         const response = await fetch(apiUrl, {
             method: "POST",
@@ -25,30 +25,36 @@ export default async function handler(req, res) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({ 
-                model: "mistralai/Mistral-7B-Instruct-v0.2",
-                messages: [
-                    { role: "user", content: `Tengo ${food}. Dame 3 consejos cortos para no desperdiciarlo.` }
-                ],
-                max_tokens: 150
+                inputs: `[INST] Dame 3 consejos de cocina muy cortos para: ${food} [/INST]`,
+                parameters: { max_new_tokens: 150 }
             }),
         });
 
-        // Verificamos si la respuesta es texto plano (como el "Not Found") antes de convertir a JSON
         const textData = await response.text();
         
         try {
             const jsonData = JSON.parse(textData);
+            
             if (!response.ok) {
-                return res.status(200).json({ error_detail: jsonData.error || "Error en API" });
+                return res.status(200).json({ error_detail: jsonData.error || "Error API" });
             }
-            // El formato de chat completions devuelve la respuesta en choices
-            const aiMessage = jsonData.choices[0].message.content;
-            return res.status(200).json({ generated_text: aiMessage });
+
+            // Mistral en esta ruta devuelve un array o un objeto con el texto
+            let finalResponse = Array.isArray(jsonData) ? jsonData[0].generated_text : jsonData.generated_text;
+            
+            // Limpiamos el texto para que no repita tu pregunta
+            if (finalResponse.includes("[/INST]")) {
+                finalResponse = finalResponse.split("[/INST]").pop().trim();
+            }
+
+            return res.status(200).json({ generated_text: finalResponse });
+
         } catch (e) {
-            return res.status(200).json({ error_detail: "La API respondió algo no válido: " + textData });
+            // Si esto sale, sabremos qué texto exacto nos está enviando Hugging Face
+            return res.status(200).json({ error_detail: "Respuesta no esperada: " + textData.substring(0, 100) });
         }
 
     } catch (error) {
-        return res.status(500).json({ error_detail: "Error en el servidor: " + error.message });
+        return res.status(500).json({ error_detail: "Error de servidor: " + error.message });
     }
 }
