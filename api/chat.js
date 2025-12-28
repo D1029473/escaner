@@ -5,20 +5,16 @@ export default async function handler(req, res) {
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    // Si alguien entra por URL directa (GET), le damos un mensaje de éxito
-    if (req.method !== 'POST') {
-        return res.status(200).json({ mensaje: "Servidor Save and Taste activo. Esperando datos POST." });
-    }
-
     try {
         const { food } = req.body;
-        if (!food) return res.status(400).json({ error_detail: "No se detectó alimento" });
-
-        // --- TOKEN (Asegúrate de que no haya espacios en las partes) ---
+        
+        // --- TOKEN (Asegúrate de que estas partes NO tengan espacios dentro de las comillas) ---
         const t1 = "hf_"; 
         const t2 = "GTlTyNnsmLcgrIHSclQrl"; 
         const t3 = "PZaKwAvknMCav";
-        const cleanToken = (t1 + t2 + t3).trim();
+        
+        // Esta línea elimina cualquier espacio, tabulación o salto de línea oculto
+        const cleanToken = (t1 + t2 + t3).replace(/\s+/g, '').trim();
 
         const response = await fetch("https://router.huggingface.co/hf-inference/models/google/gemma-2-9b-it", {
             method: "POST",
@@ -27,22 +23,21 @@ export default async function handler(req, res) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({ 
-                inputs: `[INST] Dame 3 consejos cortos para aprovechar: ${food} [/INST]`,
-                parameters: { max_new_tokens: 150 }
+                inputs: `[INST] Soy un experto en cocina. He detectado ${food}. Dame 3 consejos cortos y creativos para no desperdiciarlo. [/INST]`,
+                parameters: { max_new_tokens: 150, temperature: 0.7 }
             }),
         });
 
         const data = await response.json();
 
         if (!response.ok) {
-            return res.status(200).json({ error_detail: data.error || "Error en Hugging Face" });
+            // Esto nos dirá si el error es de permisos o de token
+            return res.status(200).json({ error_detail: data.error || "Error de validación" });
         }
 
         return res.status(200).json(data);
 
     } catch (error) {
-        // Este es el error que veías antes. Ahora imprimirá el motivo en los logs de Vercel.
-        console.error("LOG DE ERROR:", error.message);
-        return res.status(500).json({ error_detail: "Error interno: " + error.message });
+        return res.status(500).json({ error_detail: "Fallo de conexión: " + error.message });
     }
 }
