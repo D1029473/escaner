@@ -1,17 +1,14 @@
 export default async function handler(req, res) {
-    // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
+    if (req.method === 'OPTIONS') return res.status(200).end();
     
     if (req.method === 'GET') {
         return res.status(200).json({ 
             status: "Online", 
-            message: "Servidor listo. Esperando alimento desde la App.",
+            message: "Servidor listo (HF Router API)",
             timestamp: new Date().toISOString()
         });
     }
@@ -20,7 +17,6 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: "Método no permitido" });
     }
 
-    // Array para recopilar todos los logs
     const debugLogs = [];
     const log = (msg) => {
         console.log(msg);
@@ -28,7 +24,7 @@ export default async function handler(req, res) {
     };
 
     try {
-        log("=== INICIO DE PETICIÓN ===");
+        log("=== INICIO PETICIÓN (Nueva API HF) ===");
         
         const { food } = req.body || {};
         log(`Alimento recibido: "${food}"`);
@@ -40,7 +36,7 @@ export default async function handler(req, res) {
             });
         }
 
-        // TOKEN - Usa variables de entorno en producción
+        // TOKEN de HuggingFace
         const HF_TOKEN = process.env.HF_TOKEN || (() => {
             const t1 = "hf_";
             const t2 = "xXFSCbBADUDCG";
@@ -48,134 +44,108 @@ export default async function handler(req, res) {
             return (t1 + t2 + t3).trim();
         })();
         
-        log(`Token configurado: ${HF_TOKEN.substring(0, 6)}...${HF_TOKEN.substring(HF_TOKEN.length - 4)}`);
-        log(`Longitud del token: ${HF_TOKEN.length} caracteres`);
+        log(`Token: ${HF_TOKEN.substring(0, 6)}...${HF_TOKEN.substring(HF_TOKEN.length - 4)}`);
+        log(`Longitud token: ${HF_TOKEN.length} caracteres`);
 
-        // Usar la API Serverless de HuggingFace (gratuita, con límites de rate)
-        // Modelos más confiables y disponibles:
-        const MODEL_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
+        // NUEVA API de HuggingFace (formato OpenAI)
+        // Modelo gratuito con hf-inference (CPU, pero funciona)
+        const MODEL = "HuggingFaceTB/SmolLM3-3B:hf-inference";
+        const API_URL = "https://router.huggingface.co/v1/chat/completions";
         
-        // Alternativas si este falla:
-        // "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
-        // "https://api-inference.huggingface.co/models/google/flan-t5-large"
-        // "https://api-inference.huggingface.co/models/tiiuae/falcon-7b-instruct"
-        
-        log(`Modelo seleccionado: ${MODEL_URL}`);
-        
-        const prompt = `Eres un asistente de cocina. Dame exactamente 3 consejos cortos y prácticos en español para cocinar o aprovechar: ${food}. Sé directo, no uses introducciones.`;
-        log(`Prompt: ${prompt.substring(0, 100)}...`);
+        log(`Modelo: ${MODEL}`);
+        log(`Endpoint: ${API_URL}`);
 
-        log("Preparando petición a HuggingFace...");
-        
-        const requestBody = { 
-            inputs: prompt,
-            parameters: { 
-                max_new_tokens: 200,
-                temperature: 0.7,
-                top_p: 0.95,
-                return_full_text: false
-            },
-            options: {
-                wait_for_model: true,
-                use_cache: false
-            }
+        const requestBody = {
+            model: MODEL,
+            messages: [
+                {
+                    role: "user",
+                    content: `Dame 3 consejos muy cortos en español para cocinar o aprovechar: ${food}. Solo los consejos, sin introducción.`
+                }
+            ],
+            max_tokens: 200,
+            temperature: 0.7
         };
         
-        log(`Body de petición: ${JSON.stringify(requestBody).substring(0, 150)}...`);
+        log(`Request body: ${JSON.stringify(requestBody).substring(0, 200)}...`);
 
-        const fetchStartTime = Date.now();
-        const response = await fetch(MODEL_URL, {
+        const fetchStart = Date.now();
+        const response = await fetch(API_URL, {
             method: "POST",
             headers: { 
                 "Authorization": `Bearer ${HF_TOKEN}`,
-                "Content-Type": "application/json",
-                "x-wait-for-model": "true"
+                "Content-Type": "application/json"
             },
             body: JSON.stringify(requestBody)
         });
         
-        const fetchDuration = Date.now() - fetchStartTime;
+        const fetchDuration = Date.now() - fetchStart;
         log(`Petición completada en ${fetchDuration}ms`);
-        log(`Status HTTP: ${response.status} ${response.statusText}`);
-        log(`Headers de respuesta: ${JSON.stringify(Object.fromEntries(response.headers))}`);
+        log(`Status: ${response.status} ${response.statusText}`);
 
         const responseText = await response.text();
-        log(`Respuesta cruda (primeros 500 chars): ${responseText.substring(0, 500)}`);
-        log(`Longitud total de respuesta: ${responseText.length} caracteres`);
+        log(`Respuesta cruda (500 chars): ${responseText.substring(0, 500)}`);
+        log(`Longitud respuesta: ${responseText.length} caracteres`);
 
         // Parsear respuesta
         let jsonData;
         try {
             jsonData = JSON.parse(responseText);
-            log(`JSON parseado correctamente`);
-            log(`Tipo de dato: ${Array.isArray(jsonData) ? 'Array' : typeof jsonData}`);
-            log(`Estructura: ${JSON.stringify(jsonData, null, 2).substring(0, 300)}`);
+            log(`JSON parseado OK`);
+            log(`Estructura: ${JSON.stringify(jsonData, null, 2).substring(0, 400)}`);
         } catch (parseError) {
             log(`ERROR parseando JSON: ${parseError.message}`);
             return res.status(200).json({ 
                 error_detail: "Respuesta no válida del modelo",
-                raw_response: responseText,
+                raw_response: responseText.substring(0, 500),
                 parse_error: parseError.message,
                 debug: debugLogs
             });
         }
 
-        // Manejo de errores específicos de HuggingFace
+        // Manejo de errores
         if (jsonData.error) {
-            log(`ERROR del modelo HF: ${jsonData.error}`);
+            log(`ERROR de HF: ${JSON.stringify(jsonData.error)}`);
             
-            if (jsonData.error.includes("loading") || jsonData.error.includes("currently loading")) {
-                log("Modelo en proceso de carga");
+            if (typeof jsonData.error === 'string' && jsonData.error.includes("loading")) {
                 return res.status(200).json({ 
-                    generated_text: "⏳ El modelo se está cargando (puede tardar 20-30 segundos). Vuelve a intentarlo en un momento.",
+                    generated_text: "⏳ El modelo se está cargando. Espera 20-30 segundos y reintenta.",
                     is_loading: true,
-                    estimated_time: jsonData.estimated_time,
                     debug: debugLogs
                 });
             }
             
-            if (jsonData.error.includes("Authorization") || jsonData.error.includes("token")) {
-                log("Error de autorización - token inválido");
+            if (typeof jsonData.error === 'object' && jsonData.error.message) {
                 return res.status(200).json({ 
-                    error_detail: "Token de HuggingFace inválido. Verifica tu token.",
-                    token_length: HF_TOKEN.length,
-                    token_preview: `${HF_TOKEN.substring(0, 10)}...`,
-                    debug: debugLogs
-                });
-            }
-
-            if (jsonData.error.includes("Model") && jsonData.error.includes("does not exist")) {
-                log("Modelo no existe");
-                return res.status(200).json({ 
-                    error_detail: "El modelo especificado no existe en HuggingFace",
-                    model_url: MODEL_URL,
+                    error_detail: `Error del modelo: ${jsonData.error.message}`,
+                    full_error: jsonData.error,
                     debug: debugLogs
                 });
             }
             
             return res.status(200).json({ 
-                error_detail: `Error del modelo: ${jsonData.error}`,
-                full_error: jsonData,
+                error_detail: `Error: ${JSON.stringify(jsonData.error)}`,
                 debug: debugLogs
             });
         }
 
-        // Extraer texto generado
-        log("Intentando extraer texto generado...");
+        // Extraer el texto generado (formato OpenAI)
+        log("Extrayendo texto generado...");
         let generatedText = "";
         
-        if (Array.isArray(jsonData)) {
-            log(`Es un array con ${jsonData.length} elementos`);
-            generatedText = jsonData[0]?.generated_text || "";
-            log(`Texto del primer elemento: ${generatedText.substring(0, 100)}`);
-        } else if (jsonData.generated_text) {
-            log("Tiene propiedad generated_text");
-            generatedText = jsonData.generated_text;
-        } else if (jsonData[0]?.generated_text) {
-            log("Tiene jsonData[0].generated_text");
-            generatedText = jsonData[0].generated_text;
+        if (jsonData.choices && jsonData.choices.length > 0) {
+            log(`Encontrado choices[0]`);
+            const choice = jsonData.choices[0];
+            
+            if (choice.message && choice.message.content) {
+                generatedText = choice.message.content;
+                log(`Texto extraído de message.content: ${generatedText.substring(0, 100)}`);
+            } else if (choice.text) {
+                generatedText = choice.text;
+                log(`Texto extraído de text: ${generatedText.substring(0, 100)}`);
+            }
         } else {
-            log("ERROR: No se encontró texto generado en ningún formato conocido");
+            log(`ERROR: No se encontró choices en la respuesta`);
             log(`Claves disponibles: ${Object.keys(jsonData).join(', ')}`);
             return res.status(200).json({ 
                 error_detail: "Formato de respuesta inesperado",
@@ -185,21 +155,22 @@ export default async function handler(req, res) {
             });
         }
 
-        // Limpiar el texto
-        const originalText = generatedText;
-        generatedText = generatedText
-            .replace(/\[INST\]|\[\/INST\]/g, '')
-            .replace(/<\|.*?\|>/g, '')
-            .replace(/^(assistant|user):/gi, '')
-            .trim();
+        // Limpiar texto
+        generatedText = generatedText.trim();
         
-        log(`Texto original length: ${originalText.length}`);
-        log(`Texto limpio length: ${generatedText.length}`);
+        log(`Texto final length: ${generatedText.length}`);
         log(`Texto final: ${generatedText}`);
 
+        if (!generatedText) {
+            return res.status(200).json({ 
+                error_detail: "El modelo no generó texto",
+                debug: debugLogs
+            });
+        }
+
         return res.status(200).json({ 
-            generated_text: generatedText || "No se pudo generar respuesta. Intenta de nuevo.",
-            model_used: MODEL_URL.includes("gemma") ? "Gemma 2" : "Phi-3",
+            generated_text: generatedText,
+            model_used: MODEL,
             processing_time: `${fetchDuration}ms`,
             debug: debugLogs,
             success: true
