@@ -73,20 +73,48 @@
         reader.readAsDataURL(e.target.files[0]);
     }
 
-    async function preguntarIA() {
-        const txt = document.getElementById("ai-text");
-        document.getElementById("ai-response").style.display = "block";
-        txt.innerHTML = '<div class="loader"></div> Consultando...';
-        try {
-            const r = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ food: currentFood }) });
-            const data = await r.json();
-            if (data.error_detail) { txt.innerText = "Error: " + JSON.stringify(data.error_detail); }
-            else {
-                let res = Array.isArray(data) ? data[0].generated_text : data.generated_text;
-                txt.innerText = res.includes("[/INST]") ? res.split("[/INST]").pop().trim() : res;
-            }
-        } catch (e) { txt.innerText = "Error de conexión."; }
+async function preguntarIA() {
+    const txt = document.getElementById("ai-text");
+    document.getElementById("ai-response").style.display = "block";
+    txt.innerHTML = '<div class="loader"></div> Consultando...';
+    
+    try {
+        const r = await fetch("/api/chat", { 
+            method: "POST", 
+            headers: { "Content-Type": "application/json" }, 
+            body: JSON.stringify({ food: currentFood }) 
+        });
+        
+        const data = await r.json();
+        
+        // MOSTRAR DEBUG COMPLETO
+        if (data.debug) {
+            console.log("=== DEBUG DE LA API ===");
+            data.debug.forEach(log => console.log(log));
+            console.log("=== FIN DEBUG ===");
+        }
+        
+        if (data.error_detail) { 
+            txt.innerHTML = `
+                <div style="color: #e74c3c; font-weight: bold;">❌ Error detectado:</div>
+                <div style="margin-top: 10px;">${data.error_detail}</div>
+                ${data.debug ? '<div style="margin-top: 10px; font-size: 0.85em; opacity: 0.7;">✅ Revisa la consola del navegador (F12) para ver detalles técnicos completos</div>' : ''}
+            `;
+        } else if (data.is_loading) {
+            txt.innerHTML = data.generated_text;
+        } else {
+            let res = Array.isArray(data) ? data[0].generated_text : data.generated_text;
+            txt.innerHTML = res.includes("[/INST]") ? res.split("[/INST]").pop().trim() : res;
+        }
+        
+    } catch (e) { 
+        txt.innerHTML = `
+            <div style="color: #e74c3c;">❌ Error de conexión</div>
+            <div style="margin-top: 10px; font-size: 0.9em;">${e.message}</div>
+        `;
+        console.error("Error completo:", e);
     }
+}
     init();
 </script>
 </body>
