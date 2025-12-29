@@ -4,11 +4,10 @@
   "type": "module",
   "description": "App de escaneo de alimentos con IA",
   "scripts": {
-    "dev": "vercel dev",
-    "build": "echo 'No build needed'"
+    "dev": "vercel dev"
   },
   "dependencies": {},
   "engines": {
-    "node": ">=18.x"
+    "node": "20.x"
   }
 }
