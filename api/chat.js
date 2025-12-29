@@ -52,7 +52,7 @@ export default async function handler(req, res) {
         log(`Longitud del token: ${HF_TOKEN.length} caracteres`);
 
         // OPCIÓN 1: Usar Gemma 2 (más confiable)
-        const MODEL_URL = "https://api-inference.huggingface.co/models/google/gemma-2-2b-it";
+        const MODEL_URL = "https://router.huggingface.co/models/google/gemma-2-2b-it";
         log(`Modelo seleccionado: ${MODEL_URL}`);
         
         const prompt = `Eres un asistente de cocina. Dame exactamente 3 consejos cortos y prácticos en español para cocinar o aprovechar: ${food}. Sé directo, no uses introducciones.`;
