@@ -51,8 +51,15 @@ export default async function handler(req, res) {
         log(`Token configurado: ${HF_TOKEN.substring(0, 6)}...${HF_TOKEN.substring(HF_TOKEN.length - 4)}`);
         log(`Longitud del token: ${HF_TOKEN.length} caracteres`);
 
-        // OPCIÓN 1: Usar Gemma 2 (más confiable)
-        const MODEL_URL = "https://router.huggingface.co/models/google/gemma-2-2b-it";
+        // Usar la API Serverless de HuggingFace (gratuita, con límites de rate)
+        // Modelos más confiables y disponibles:
+        const MODEL_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
+        
+        // Alternativas si este falla:
+        // "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
+        // "https://api-inference.huggingface.co/models/google/flan-t5-large"
+        // "https://api-inference.huggingface.co/models/tiiuae/falcon-7b-instruct"
+        
         log(`Modelo seleccionado: ${MODEL_URL}`);
         
         const prompt = `Eres un asistente de cocina. Dame exactamente 3 consejos cortos y prácticos en español para cocinar o aprovechar: ${food}. Sé directo, no uses introducciones.`;
