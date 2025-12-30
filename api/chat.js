@@ -61,11 +61,11 @@ export default async function handler(req, res) {
             messages: [
                 {
                     role: "system",
-                    content: "Eres un asistente de cocina conciso. Responde SOLO con 3 consejos numerados, sin explicaciones previas."
+                    content: "Da exactamente 3 consejos breves y prácticos para conservar mejor el alimento indicado. Usa frases muy cortas. Español neutro. Sin introducción ni cierre. Sin emojis. Formato en lista numerada. Enfocado en conservación doméstica."
                 },
                 {
                     role: "user",
-                    content: `3 consejos cortos en español para: ${food}`
+                    content: `${food}`
                 }
             ],
             max_tokens: 150,
