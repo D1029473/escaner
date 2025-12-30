@@ -1,8 +1,10 @@
 {
   "name": "save-and-taste",
-  "version": "2.0.0",
-  "main": "api/chat.js",
+  "version": "2.2.0",
   "type": "module",
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
   "engines": {
     "node": ">=18.x"
   }
