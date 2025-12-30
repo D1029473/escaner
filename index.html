@@ -1,434 +1,3113 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Save and Taste | Eco-Scanner</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Save & Taste | Escáner Inteligente de Alimentos</title>
+    
+    <!-- Meta tags para PWA y SEO -->
+    <meta name="description" content="Escanea alimentos con IA y obtén recetas saludables y consejos de conservación. Reduce desperdicios y come mejor.">
+    <meta name="keywords" content="alimentos, recetas, conservación, escáner, IA, nutrición">
+    <meta name="author" content="Save & Taste">
+    <meta name="theme-color" content="#10B981">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Save & Taste | Escáner Inteligente">
+    <meta property="og:description" content="Tu asistente de cocina con IA">
+    <meta property="og:image" content="https://yourdomain.com/og-image.png">
+    <meta property="og:url" content="https://yourdomain.com">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- TensorFlow y Teachable Machine -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.15.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+    
     <style>
-        :root { 
-            --primary: #007AFF; 
-            --primary-dark: #0051D5;
-            --success: #34C759;
-            --dark: #1D1D1F; 
-            --light: #F5F5F7; 
-            --white: #FFFFFF;
-            --card-shadow: 0 2px 16px rgba(0,0,0,0.12);
+        :root {
+            /* Sistema de colores */
+            --color-primary: #10B981;
+            --color-primary-dark: #059669;
+            --color-secondary: #3B82F6;
+            --color-secondary-dark: #2563EB;
+            --color-accent: #F59E0B;
+            --color-danger: #EF4444;
+            --color-success: #10B981;
+            --color-warning: #F59E0B;
+            
+            /* Escala de grises */
+            --color-gray-50: #F9FAFB;
+            --color-gray-100: #F3F4F6;
+            --color-gray-200: #E5E7EB;
+            --color-gray-300: #D1D5DB;
+            --color-gray-400: #9CA3AF;
+            --color-gray-500: #6B7280;
+            --color-gray-600: #4B5563;
+            --color-gray-700: #374151;
+            --color-gray-800: #1F2937;
+            --color-gray-900: #111827;
+            
+            /* Sombras */
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+            
+            /* Bordes */
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            --radius-2xl: 1.5rem;
+            
+            /* Tipografía */
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-heading: 'Poppins', var(--font-sans);
         }
         
-        * { box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
         
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
-            margin: 0; 
-            background: var(--light);
-            color: var(--dark); 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center;
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: var(--font-sans);
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            color: var(--color-gray-800);
+            line-height: 1.6;
             min-height: 100vh;
+            overflow-x: hidden;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) 
+                     env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
         
-        .header { 
-            width: 100%; 
-            background: var(--white); 
-            padding: 16px 0; 
-            text-align: center; 
-            box-shadow: 0 1px 0 rgba(0,0,0,0.08);
-            position: sticky; 
-            top: 0; 
+        /* Header mejorado */
+        .app-header {
+            background: white;
+            padding: 1rem 1.5rem;
+            position: sticky;
+            top: 0;
             z-index: 100;
-            backdrop-filter: blur(10px);
-        }
-        
-        .header h1 { 
-            margin: 0; 
-            font-size: clamp(1.1rem, 3vw, 1.3rem);
-            letter-spacing: -0.5px; 
-            color: var(--dark); 
-            font-weight: 600;
-        }
-        
-        #vision-container { 
-            width: 100%; 
-            max-width: 600px; 
-            aspect-ratio: 4/3;
-            background: #000; 
-            position: relative; 
-            overflow: hidden; 
-            display: flex; 
-            justify-content: center; 
+            box-shadow: var(--shadow-sm);
+            border-bottom: 1px solid var(--color-gray-100);
+            display: flex;
             align-items: center;
-            border-radius: 0;
+            justify-content: space-between;
         }
         
-        canvas, #image-preview { 
-            height: 100%; 
-            width: auto; 
-            object-fit: cover; 
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }
         
-        .scanner-line { 
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 2px; 
-            background: var(--success);
-            box-shadow: 0 0 10px var(--success);
-            animation: scan 2.5s infinite ease-in-out; 
-            z-index: 5; 
-            opacity: 0.8;
+        .logo-icon {
+            font-size: 1.75rem;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
-        @keyframes scan { 
-            0%, 100% { top: 0%; } 
-            50% { top: 100%; } 
+        .logo-text {
+            font-family: var(--font-heading);
+            font-weight: 600;
+            font-size: 1.25rem;
+            background: linear-gradient(135deg, var(--color-gray-800), var(--color-gray-600));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
-        .main-content {
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            background: var(--color-gray-100);
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--color-gray-600);
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+        
+        .status-dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+            background: var(--color-success);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Scanner section mejorada */
+        .scanner-section {
+            max-width: 800px;
+            margin: 1.5rem auto;
+            padding: 0 1rem;
+        }
+        
+        .scanner-container {
+            background: white;
+            border-radius: var(--radius-2xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+        }
+        
+        .camera-viewport {
+            position: relative;
             width: 100%;
-            max-width: 600px;
-            padding: 20px;
+            aspect-ratio: 4/3;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
-        .info-card { 
-            background: var(--white); 
-            border-radius: 20px; 
-            padding: clamp(20px, 5vw, 32px);
-            box-shadow: var(--card-shadow);
-            margin-bottom: 16px;
+        #webcam-viewer {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
         
-        #food-name { 
-            font-size: clamp(1.5rem, 5vw, 2rem);
-            font-weight: 600; 
-            color: var(--dark); 
-            margin-bottom: 20px; 
-            display: block;
-            letter-spacing: -0.5px;
+        #image-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            display: none;
         }
         
-        .button-group {
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .scanning-grid {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 70%;
+            height: 50%;
+            border: 2px solid rgba(16, 185, 129, 0.6);
+            border-radius: var(--radius-xl);
+            animation: pulse-border 3s ease-in-out infinite;
+        }
+        
+        .scanning-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                var(--color-primary) 50%, 
+                transparent 100%);
+            box-shadow: 0 0 20px var(--color-primary);
+            animation: scan 2s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(16, 185, 129, 0.6); }
+            50% { border-color: rgba(59, 130, 246, 0.6); }
+        }
+        
+        .camera-controls {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 12px;
+            gap: 0.75rem;
+            padding: 1.25rem;
+            background: rgba(0, 0, 0, 0.9);
         }
         
-        .btn { 
-            border: none; 
-            padding: clamp(14px, 3vw, 16px);
-            border-radius: 12px; 
-            font-weight: 600; 
-            font-size: clamp(0.9rem, 2.5vw, 1rem);
-            cursor: pointer; 
+        /* Botones mejorados */
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-family: var(--font-sans);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
             transition: all 0.2s ease;
-            width: 100%;
-            font-family: inherit;
+            position: relative;
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
+        }
+        
+        .btn:active::after {
+            animation: ripple 0.6s ease-out;
+        }
+        
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(20, 20);
+                opacity: 0;
+            }
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--color-secondary), var(--color-secondary-dark));
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+        }
+        
+        .btn-outline {
+            background: white;
+            color: var(--color-gray-700);
+            border: 1px solid var(--color-gray-200);
+        }
+        
+        .btn-outline:hover:not(:disabled) {
+            background: var(--color-gray-50);
+            border-color: var(--color-gray-300);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        /* Upload section mejorada */
+        .upload-section {
+            padding: 1.25rem;
+            background: white;
+            border-radius: var(--radius-xl);
+            margin: 1rem 0;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .upload-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 2rem;
+            border: 2px dashed var(--color-gray-300);
+            border-radius: var(--radius-lg);
+            background: var(--color-gray-50);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .upload-label:hover {
+            border-color: var(--color-primary);
+            background: rgba(16, 185, 129, 0.05);
+        }
+        
+        .upload-icon {
+            font-size: 2.5rem;
+            color: var(--color-gray-400);
+        }
+        
+        /* Detection results mejorado */
+        .detection-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .food-name {
+            font-family: var(--font-heading);
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--color-gray-900);
+            margin-bottom: 0.5rem;
+        }
+        
+        .confidence-meter {
+            margin: 1rem 0;
+        }
+        
+        .confidence-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--color-gray-600);
+        }
+        
+        .meter-bar {
+            height: 0.5rem;
+            background: var(--color-gray-200);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+        
+        .meter-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-success));
+            border-radius: var(--radius-full);
+            transition: width 0.8s ease;
+            position: relative;
+        }
+        
+        .meter-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.3), 
+                transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        /* Action buttons mejorados */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .action-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 1.75rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            box-shadow: var(--shadow-md);
             position: relative;
             overflow: hidden;
         }
         
-        .btn:active {
-            transform: scale(0.97);
+        .action-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
         }
         
-        .btn-conservation { 
-            background: var(--primary); 
-            color: white;
-            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+        .action-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
         }
         
-        .btn-conservation:hover {
-            background: var(--primary-dark);
+        .action-card.selected {
+            border-color: var(--color-primary);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), transparent);
         }
         
-        .btn-recipe { 
-            background: var(--success); 
-            color: white;
-            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3);
+        .action-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
         }
         
-        .btn-recipe:hover {
-            background: #28A745;
+        .action-title {
+            font-family: var(--font-heading);
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--color-gray-900);
         }
         
-        .btn:disabled { 
-            background: #E5E5E7;
-            color: #86868B;
-            box-shadow: none;
-            cursor: not-allowed;
+        .action-description {
+            color: var(--color-gray-600);
+            font-size: 0.9375rem;
+            line-height: 1.5;
         }
         
-        .btn-upload {
-            background: var(--light);
-            color: var(--dark);
-            border: 1px solid #D2D2D7;
+        /* AI Response mejorado */
+        .response-container {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 1.75rem;
+            margin: 1.5rem 0;
+            box-shadow: var(--shadow-lg);
+            min-height: 300px;
         }
         
-        .btn-upload:hover {
-            background: #E8E8ED;
+        .response-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--color-gray-200);
         }
         
-        #ai-response { 
-            margin-top: 20px; 
-            text-align: left; 
-            background: var(--light);
-            padding: clamp(16px, 4vw, 20px);
-            border-radius: 16px; 
-            display: none;
-            line-height: 1.6;
-            font-size: clamp(0.9rem, 2.5vw, 1rem);
+        .response-title {
+            font-family: var(--font-heading);
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-gray-900);
         }
         
-        #ai-response b {
-            display: block;
-            margin-bottom: 12px;
-            font-size: clamp(1rem, 2.8vw, 1.1rem);
+        .response-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.875rem;
+            color: var(--color-gray-500);
         }
         
-        #ai-text {
-            color: #1D1D1F;
+        .response-content {
+            line-height: 1.7;
+            color: var(--color-gray-700);
+            white-space: pre-line;
+            font-size: 1.0625rem;
         }
         
-        .loader { 
-            width: 18px; 
-            height: 18px; 
-            border: 2px solid rgba(255,255,255,0.3); 
-            border-radius: 50%; 
-            border-top-color: #fff; 
-            animation: spin 0.8s linear infinite; 
-            display: inline-block;
+        .response-content h3 {
+            font-size: 1.125rem;
+            color: var(--color-gray-900);
+            margin: 1.5rem 0 0.75rem;
         }
         
-        @keyframes spin { 
-            to { transform: rotate(360deg); } 
+        .response-content ul, .response-content ol {
+            padding-left: 1.5rem;
+            margin: 0.75rem 0;
         }
         
-        .recipe-link {
-            display: block;
-            margin-top: 16px;
-            padding: 16px;
-            background: var(--white);
-            border-radius: 12px;
-            text-decoration: none;
-            color: var(--primary);
+        .response-content li {
+            margin: 0.5rem 0;
+        }
+        
+        .ai-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.25rem 0.75rem;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
             font-weight: 500;
+            color: var(--color-primary-dark);
+        }
+        
+        /* Loading states mejorados */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
             text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            transition: all 0.2s ease;
         }
         
-        .recipe-link:hover {
-            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-            transform: translateY(-2px);
+        .ai-loader {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            margin-bottom: 1.5rem;
         }
         
-        .recipe-link::after {
-            content: " →";
-            font-size: 1.2em;
+        .ai-loader .dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: var(--color-primary);
+            border-radius: 50%;
+            animation: ai-loader 1.2s linear infinite;
         }
         
-        /* Responsive adjustments */
-        @media (min-width: 768px) {
-            #vision-container {
-                border-radius: 20px;
-                margin-top: 20px;
+        .ai-loader .dot:nth-child(1) {
+            animation-delay: 0s;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .ai-loader .dot:nth-child(2) {
+            animation-delay: 0.1s;
+            top: 10px;
+            right: 10px;
+        }
+        
+        .ai-loader .dot:nth-child(3) {
+            animation-delay: 0.2s;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%);
+        }
+        
+        .ai-loader .dot:nth-child(4) {
+            animation-delay: 0.3s;
+            bottom: 10px;
+            right: 10px;
+        }
+        
+        .ai-loader .dot:nth-child(5) {
+            animation-delay: 0.4s;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .ai-loader .dot:nth-child(6) {
+            animation-delay: 0.5s;
+            bottom: 10px;
+            left: 10px;
+        }
+        
+        .ai-loader .dot:nth-child(7) {
+            animation-delay: 0.6s;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+        }
+        
+        .ai-loader .dot:nth-child(8) {
+            animation-delay: 0.7s;
+            top: 10px;
+            left: 10px;
+        }
+        
+        @keyframes ai-loader {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(0.3);
+                opacity: 0.5;
             }
         }
         
-        @media (max-width: 480px) {
-            .button-group {
+        /* Error states */
+        .error-message {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            margin: 1rem 0;
+        }
+        
+        .error-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--color-danger);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Footer mejorado */
+        .app-footer {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--color-gray-500);
+            font-size: 0.875rem;
+            margin-top: 2rem;
+            border-top: 1px solid var(--color-gray-200);
+        }
+        
+        .tech-stack {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .tech-badge {
+            padding: 0.375rem 0.75rem;
+            background: var(--color-gray-100);
+            border-radius: var(--radius-full);
+            font-weight: 500;
+            color: var(--color-gray-600);
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 640px) {
+            .app-header {
+                padding: 0.75rem 1rem;
+            }
+            
+            .scanner-section {
+                margin: 1rem auto;
+                padding: 0 0.75rem;
+            }
+            
+            .action-grid {
                 grid-template-columns: 1fr;
+            }
+            
+            .camera-controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn {
+                padding: 0.75rem 1.25rem;
+            }
+        }
+        
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-gray-50: #111827;
+                --color-gray-100: #1F2937;
+                --color-gray-200: #374151;
+                --color-gray-300: #4B5563;
+                --color-gray-400: #6B7280;
+                --color-gray-500: #9CA3AF;
+                --color-gray-600: #D1D5DB;
+                --color-gray-700: #E5E7EB;
+                --color-gray-800: #F3F4F6;
+                --color-gray-900: #F9FAFB;
+            }
+            
+            body {
+                background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+                color: var(--color-gray-300);
+            }
+            
+            .scanner-container,
+            .detection-card,
+            .action-card,
+            .response-container,
+            .upload-section {
+                background: var(--color-gray-800);
+                color: var(--color-gray-300);
+            }
+            
+            .app-header {
+                background: var(--color-gray-900);
             }
         }
     </style>
 </head>
 <body>
-    <div class="header"><h1>SAVE AND TASTE</h1></div>
-    
-    <div id="vision-container">
-        <div class="scanner-line"></div>
-        <div id="webcam-viewer"></div>
-        <img id="image-preview" src="#" style="display:none;">
-    </div>
-    
-    <div class="main-content">
-        <div class="info-card">
-            <span id="food-name">Iniciando...</span>
-            
-            <div class="button-group">
-                <button class="btn btn-conservation" id="btn-conservation" onclick="getConservationTips()" disabled>
-                    Conservar
-                </button>
-                <button class="btn btn-recipe" id="btn-recipe" onclick="getRecipe()" disabled>
-                    Recetas
-                </button>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="logo-container">
+            <div class="logo-icon">🥗</div>
+            <div class="logo-text">Save & Taste</div>
+        </div>
+        <div class="status-badge" id="statusBadge">
+            <span class="status-dot"></span>
+            <span id="statusText">Conectando...</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- Scanner Section -->
+        <section class="scanner-section">
+            <div class="scanner-container">
+                <div class="camera-viewport">
+                    <div id="webcam-viewer"></div>
+                    <img id="image-preview" src="#" alt="Vista previa">
+                    <div class="scanner-overlay">
+                        <div class="scanning-grid"></div>
+                        <div class="scanning-line"></div>
+                    </div>
+                </div>
+                
+                <div class="camera-controls">
+                    <button class="btn btn-primary" id="captureBtn" onclick="captureImage()" disabled>
+                        <span>📸</span>
+                        <span>Capturar</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="flipCamera()">
+                        <span>🔄</span>
+                        <span>Cambiar cámara</span>
+                    </button>
+                </div>
             </div>
-            
-            <button class="btn btn-upload" onclick="document.getElementById('file-input').click()">
-                📷 Subir foto
-            </button>
-            
-            <input type="file" id="file-input" style="display:none" accept="image/*" onchange="handleFileUpload(event)">
-            
-            <div id="ai-response">
-                <b id="response-title">Consejos de conservación:</b>
-                <div id="ai-text"></div>
+        </section>
+
+        <!-- Upload Section -->
+        <section class="upload-section">
+            <label class="upload-label" for="file-input">
+                <div class="upload-icon">📁</div>
+                <div style="text-align: center;">
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">O sube una foto</div>
+                    <div style="font-size: 0.875rem; color: var(--color-gray-500);">
+                        JPG, PNG o GIF • Máx. 5MB
+                    </div>
+                </div>
+            </label>
+            <input type="file" id="file-input" accept="image/*" capture="environment" style="display: none;" onchange="handleFileUpload(event)">
+        </section>
+
+        <!-- Detection Results -->
+        <div id="detectionResults" class="detection-card" style="display: none;">
+            <div class="food-name" id="detectedFood">---</div>
+            <div class="confidence-meter">
+                <div class="confidence-label">
+                    <span>Confianza de detección</span>
+                    <span id="confidenceValue">0%</span>
+                </div>
+                <div class="meter-bar">
+                    <div class="meter-fill" id="confidenceBar"></div>
+                </div>
+            </div>
+            <div style="margin-top: 1rem; font-size: 0.875rem; color: var(--color-gray-500);">
+                Haz clic en una opción para obtener sugerencias de IA
             </div>
         </div>
-    </div>
 
-<script>
-    const URL_MODELO = "https://teachablemachine.withgoogle.com/models/_UsIOfbEQ/"; 
-    let model, webcam, currentFood = "", isUsingPhoto = false;
+        <!-- Action Cards -->
+        <section class="scanner-section">
+            <div class="action-grid">
+                <div class="action-card" onclick="selectOption('conservation')" id="conservationCard">
+                    <div class="action-icon">❄️</div>
+                    <div class="action-title">Conservación</div>
+                    <div class="action-description">
+                        Aprende a almacenar y prolongar la frescura de tus alimentos
+                    </div>
+                </div>
+                
+                <div class="action-card" onclick="selectOption('recipes')" id="recipesCard">
+                    <div class="action-icon">🍳</div>
+                    <div class="action-title">Recetas</div>
+                    <div class="action-description">
+                        Descubre recetas saludables y deliciosas con lo que tienes
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    async function init() {
-        try {
-            model = await tmImage.load(URL_MODELO + "model.json", URL_MODELO + "metadata.json");
-            webcam = new tmImage.Webcam(400, 400, false);
-            await webcam.setup({ facingMode: "environment" }); 
-            await webcam.play();
-            document.getElementById("webcam-viewer").appendChild(webcam.canvas);
-            document.getElementById("food-name").innerText = "Listo";
-            loop();
-        } catch (e) { 
-            document.getElementById("food-name").innerText = "Error cámara"; 
-        }
-    }
+        <!-- AI Response -->
+        <section class="scanner-section">
+            <div class="response-container" id="responseContainer" style="display: none;">
+                <div class="response-header">
+                    <div class="response-title" id="responseTitle">Sugerencias de IA</div>
+                    <div class="response-meta">
+                        <span class="ai-badge" id="aiBadge">
+                            <span>🤖</span>
+                            <span>IA</span>
+                        </span>
+                        <span id="responseTimestamp">Justo ahora</span>
+                    </div>
+                </div>
+                
+                <div class="loading-container" id="loadingIndicator" style="display: none;">
+                    <div class="ai-loader">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                    </div>
+                    <div style="font-weight: 600; margin-bottom: 0.5rem;">Generando sugerencias...</div>
+                    <div style="color: var(--color-gray-500); font-size: 0.875rem;">
+                        Esto puede tomar unos segundos
+                    </div>
+                </div>
+                
+                <div class="response-content" id="aiResponse"></div>
+                
+                <div id="errorContainer" style="display: none;"></div>
+            </div>
+        </section>
+    </main>
 
-    async function loop() { 
-        if (!isUsingPhoto) { 
-            webcam.update(); 
-            await predict(webcam.canvas); 
-            window.requestAnimationFrame(loop); 
-        } 
-    }
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="tech-stack">
+            <div class="tech-badge">
+                <span>🤖</span>
+                <span>Teachable Machine</span>
+            </div>
+            <div class="tech-badge">
+                <span>⚡</span>
+                <span>Hugging Face</span>
+            </div>
+            <div class="tech-badge">
+                <span>🌐</span>
+                <span>Vercel</span>
+            </div>
+        </div>
+        <div style="margin-bottom: 0.5rem;">
+            <span id="appVersion">v2.0.0 • </span>
+            <span id="connectionStatus">Conectado</span>
+        </div>
+        <div>© 2024 Save & Taste. Tu asistente de cocina inteligente.</div>
+    </footer>
 
-    async function predict(img) {
-        const pred = await model.predict(img);
-        let high = 0; 
-        let match = "";
-        for (let i = 0; i < pred.length; i++) { 
-            if (pred[i].probability > high) { 
-                high = pred[i].probability; 
-                match = pred[i].className; 
-            } 
-        }
-        if (high > 0.65) { 
-            currentFood = match; 
-            document.getElementById("food-name").innerText = match;
-            document.getElementById("btn-conservation").disabled = false;
-            document.getElementById("btn-recipe").disabled = false;
-        }
-    }
-
-    async function handleFileUpload(e) {
-        isUsingPhoto = true; 
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const img = new Image(); 
-            img.src = event.target.result;
-            document.getElementById("image-preview").src = img.src;
-            document.getElementById("image-preview").style.display = "block";
-            document.getElementById("webcam-viewer").style.display = "none";
-            img.onload = () => predict(img);
+    <script>
+        // Configuración
+        const CONFIG = {
+            MODEL_URL: "https://teachablemachine.withgoogle.com/models/_UsIOfbEQ/",
+            MIN_CONFIDENCE: 0.65,
+            API_ENDPOINT: "/api/chat",
+            APP_VERSION: "2.0.0"
         };
-        reader.readAsDataURL(e.target.files[0]);
-    }
 
-    async function getConservationTips() {
-        const txt = document.getElementById("ai-text");
-        const responseDiv = document.getElementById("ai-response");
-        const title = document.getElementById("response-title");
-        
-        responseDiv.style.display = "block";
-        title.textContent = "Consejos de conservación:";
-        txt.innerHTML = '<div class="loader"></div> Consultando...';
-        
-        try {
-            const r = await fetch("/api/chat", { 
-                method: "POST", 
-                headers: { "Content-Type": "application/json" }, 
-                body: JSON.stringify({ food: currentFood }) 
-            });
-            
-            const data = await r.json();
-            
-            if (data.debug) {
-                console.log("=== DEBUG DE LA API ===");
-                data.debug.forEach(log => console.log(log));
-                console.log("=== FIN DEBUG ===");
+        // Estado de la aplicación
+        let appState = {
+            model: null,
+            webcam: null,
+            currentFood: "",
+            currentConfidence: 0,
+            selectedOption: null,
+            isProcessing: false,
+            cameraFacingMode: "environment",
+            isUsingPhoto: false,
+            lastResponse: null
+        };
+
+        // Elementos DOM
+        const elements = {
+            webcamViewer: document.getElementById('webcam-viewer'),
+            imagePreview: document.getElementById('image-preview'),
+            statusBadge: document.getElementById('statusBadge'),
+            statusText: document.getElementById('statusText'),
+            detectedFood: document.getElementById('detectedFood'),
+            confidenceValue: document.getElementById('confidenceValue'),
+            confidenceBar: document.getElementById('confidenceBar'),
+            detectionResults: document.getElementById('detectionResults'),
+            conservationCard: document.getElementById('conservationCard'),
+            recipesCard: document.getElementById('recipesCard'),
+            responseContainer: document.getElementById('responseContainer'),
+            responseTitle: document.getElementById('responseTitle'),
+            aiBadge: document.getElementById('aiBadge'),
+            responseTimestamp: document.getElementById('responseTimestamp'),
+            aiResponse: document.getElementById('aiResponse'),
+            loadingIndicator: document.getElementById('loadingIndicator'),
+            errorContainer: document.getElementById('errorContainer'),
+            captureBtn: document.getElementById('captureBtn'),
+            appVersion: document.getElementById('appVersion'),
+            connectionStatus: document.getElementById('connectionStatus')
+        };
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                updateStatus('Iniciando aplicación...', 'warning');
+                
+                // Cargar modelo
+                await loadModel();
+                
+                // Iniciar cámara
+                await initCamera();
+                
+                // Verificar conexión
+                await checkConnection();
+                
+                // Iniciar loop de detección
+                startDetectionLoop();
+                
+                updateStatus('Listo para escanear', 'success');
+                
+                // Registrar evento de inicio
+                logEvent('app_start', { version: CONFIG.APP_VERSION });
+                
+            } catch (error) {
+                console.error('Error inicializando:', error);
+                updateStatus('Error de inicialización', 'error');
+                showError('No se pudo iniciar la aplicación. Por favor, recarga la página.');
             }
-            
-            if (data.error_detail) { 
-                txt.innerHTML = `
-                    <div style="color: #FF3B30; font-weight: 600;">Error</div>
-                    <div style="margin-top: 8px; font-size: 0.95em;">${data.error_detail}</div>
-                `;
-            } else if (data.is_loading) {
-                txt.innerHTML = data.generated_text;
-            } else {
-                let res = data.generated_text || "";
-                txt.innerHTML = res;
+        });
+
+        // Cargar modelo de Teachable Machine
+        async function loadModel() {
+            try {
+                elements.statusText.textContent = 'Cargando modelo...';
+                
+                const modelURL = CONFIG.MODEL_URL + "model.json";
+                const metadataURL = CONFIG.MODEL_URL + "metadata.json";
+                
+                appState.model = await tmImage.load(modelURL, metadataURL);
+                
+                console.log('Modelo cargado:', appState.model);
+                logEvent('model_loaded', { model: CONFIG.MODEL_URL });
+                
+            } catch (error) {
+                console.error('Error cargando modelo:', error);
+                throw new Error('No se pudo cargar el modelo de detección');
             }
-            
-        } catch (e) { 
-            txt.innerHTML = `
-                <div style="color: #FF3B30;">Error de conexión</div>
-                <div style="margin-top: 8px; font-size: 0.9em;">${e.message}</div>
-            `;
-            console.error("Error completo:", e);
         }
-    }
 
-    async function getRecipe() {
-        const txt = document.getElementById("ai-text");
-        const responseDiv = document.getElementById("ai-response");
-        const title = document.getElementById("response-title");
-        
-        responseDiv.style.display = "block";
-        title.textContent = "Buscando recetas...";
-        txt.innerHTML = '<div class="loader"></div> Buscando las mejores recetas...';
-        
-        // Buscar recetas confiables en sitios web reconocidos
-        const recipeSearch = `receta ${currentFood} site:recetasgratis.net OR site:directoalpaladar.com OR site:cocina-casera.com`;
-        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(recipeSearch)}`;
-        
-        // Crear enlaces directos a sitios confiables de recetas
-        const recipeLinks = [
-            {
-                name: "RecetasGratis.net",
-                url: `https://www.recetasgratis.net/busqueda?q=${encodeURIComponent(currentFood)}`
-            },
-            {
-                name: "Directo al Paladar",
-                url: `https://www.directoalpaladar.com/search?q=${encodeURIComponent(currentFood)}`
-            },
-            {
-                name: "Cocina Casera",
-                url: `https://www.cocina-casera.com/?s=${encodeURIComponent(currentFood)}`
+        // Inicializar cámara
+        async function initCamera() {
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Cámara no disponible');
+                }
+                
+                const constraints = {
+                    video: {
+                        facingMode: appState.cameraFacingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+                
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                if (appState.webcam) {
+                    appState.webcam.stop();
+                }
+                
+                appState.webcam = new tmImage.Webcam(720, 720, true);
+                await appState.webcam.setup(constraints);
+                await appState.webcam.play();
+                
+                elements.webcamViewer.appendChild(appState.webcam.canvas);
+                elements.captureBtn.disabled = false;
+                
+                logEvent('camera_initialized', { facingMode: appState.cameraFacingMode });
+                
+            } catch (error) {
+                console.error('Error inicializando cámara:', error);
+                showError('No se pudo acceder a la cámara. Usa la opción de subir foto.');
+                elements.statusText.textContent = 'Cámara no disponible';
             }
-        ];
-        
-        setTimeout(() => {
-            title.textContent = "Recetas recomendadas:";
-            txt.innerHTML = `
-                <p style="margin-bottom: 16px; color: #86868B; font-size: 0.95em;">
-                    Encuentra recetas verificadas con ${currentFood}:
-                </p>
-                ${recipeLinks.map(link => `
-                    <a href="${link.url}" target="_blank" class="recipe-link">
-                        ${link.name}
-                    </a>
-                `).join('')}
-            `;
-        }, 800);
-    }
+        }
 
-    init();
-</script>
+        // Loop de detección
+        function startDetectionLoop() {
+            async function loop() {
+                if (!appState.isUsingPhoto && appState.webcam && appState.model) {
+                    appState.webcam.update();
+                    await detectFood(appState.webcam.canvas);
+                }
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        // Detectar alimento
+        async function detectFood(imageElement) {
+            try {
+                const predictions = await appState.model.predict(imageElement);
+                
+                let highestConfidence = 0;
+                let detectedClass = "";
+                
+                predictions.forEach(prediction => {
+                    if (prediction.probability > highestConfidence) {
+                        highestConfidence = prediction.probability;
+                        detectedClass = prediction.className;
+                    }
+                });
+                
+                if (highestConfidence > CONFIG.MIN_CONFIDENCE && detectedClass !== appState.currentFood) {
+                    appState.currentFood = detectedClass;
+                    appState.currentConfidence = highestConfidence;
+                    
+                    updateDetectionUI(detectedClass, highestConfidence);
+                    
+                    logEvent('food_detected', {
+                        food: detectedClass,
+                        confidence: highestConfidence
+                    });
+                }
+                
+            } catch (error) {
+                console.error('Error en detección:', error);
+            }
+        }
+
+        // Actualizar UI de detección
+        function updateDetectionUI(food, confidence) {
+            elements.detectedFood.textContent = food;
+            elements.confidenceValue.textContent = `${(confidence * 100).toFixed(1)}%`;
+            elements.confidenceBar.style.width = `${confidence * 100}%`;
+            elements.detectionResults.style.display = 'block';
+            
+            // Animación de entrada
+            elements.detectionResults.style.animation = 'slideUp 0.3s ease';
+        }
+
+        // Capturar imagen
+        async function captureImage() {
+            if (appState.isProcessing) return;
+            
+            appState.isProcessing = true;
+            elements.captureBtn.disabled = true;
+            
+            try {
+                // Crear efecto de flash
+                flashEffect();
+                
+                // Crear canvas temporal
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                canvas.width = appState.webcam.canvas.width;
+                canvas.height = appState.webcam.canvas.height;
+                
+                context.drawImage(appState.webcam.canvas, 0, 0, canvas.width, canvas.height);
+                
+                // Procesar imagen
+                await processImage(canvas);
+                
+                logEvent('image_captured', {
+                    source: 'camera',
+                    resolution: `${canvas.width}x${canvas.height}`
+                });
+                
+            } catch (error) {
+                console.error('Error capturando imagen:', error);
+                showError('Error al capturar la foto');
+            } finally {
+                appState.isProcessing = false;
+                elements.captureBtn.disabled = false;
+            }
+        }
+
+        // Efecto de flash
+        function flashEffect() {
+            const flash = document.createElement('div');
+            flash.style.position = 'fixed';
+            flash.style.top = '0';
+            flash.style.left = '0';
+            flash.style.width = '100%';
+            flash.style.height = '100%';
+            flash.style.background = 'rgba(255, 255, 255, 0.9)';
+            flash.style.zIndex = '9999';
+            flash.style.animation = 'flash 0.3s ease-out';
+            
+            document.body.appendChild(flash);
+            
+            setTimeout(() => {
+                flash.remove();
+            }, 300);
+            
+            // Agregar animación CSS
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes flash {
+                    0% { opacity: 0; }
+                    50% { opacity: 1; }
+                    100% { opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Procesar imagen (capturada o subida)
+        async function processImage(canvas) {
+            try {
+                showLoading('Analizando imagen...');
+                
+                // Redimensionar si es necesario
+                const resizedCanvas = resizeCanvas(canvas, 224, 224);
+                
+                // Detectar
+                const predictions = await appState.model.predict(resizedCanvas);
+                const topPrediction = predictions[0];
+                
+                appState.currentFood = topPrediction.className;
+                appState.currentConfidence = topPrediction.probability;
+                
+                updateDetectionUI(topPrediction.className, topPrediction.probability);
+                
+                hideLoading();
+                
+                logEvent('image_processed', {
+                    food: topPrediction.className,
+                    confidence: topPrediction.probability
+                });
+                
+            } catch (error) {
+                console.error('Error procesando imagen:', error);
+                hideLoading();
+                showError('Error al analizar la imagen');
+            }
+        }
+
+        // Redimensionar canvas
+        function resizeCanvas(canvas, width, height) {
+            const resizedCanvas = document.createElement('canvas');
+            const ctx = resizedCanvas.getContext('2d');
+            
+            resizedCanvas.width = width;
+            resizedCanvas.height = height;
+            
+            ctx.drawImage(canvas, 0, 0, width, height);
+            
+            return resizedCanvas;
+        }
+
+        // Manejar subida de archivo
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Validaciones
+            if (!file.type.startsWith('image/')) {
+                showError('Por favor, selecciona una imagen válida');
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) { // 5MB
+                showError('La imagen es demasiado grande (máximo 5MB)');
+                return;
+            }
+            
+            appState.isProcessing = true;
+            appState.isUsingPhoto = true;
+            
+            try {
+                showLoading('Procesando imagen...');
+                
+                // Mostrar preview
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    
+                    img.onload = async () => {
+                        elements.imagePreview.src = img.src;
+                        elements.imagePreview.style.display = 'block';
+                        elements.webcamViewer.style.display = 'none';
+                        
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        
+                        await processImage(canvas);
+                        
+                        appState.isUsingPhoto = false;
+                    };
+                };
+                
+                reader.readAsDataURL(file);
+                
+                logEvent('file_uploaded', {
+                    type: file.type,
+                    size: file.size
+                });
+                
+            } catch (error) {
+                console.error('Error subiendo archivo:', error);
+                hideLoading();
+                showError('Error al procesar la imagen');
+                appState.isProcessing = false;
+                appState.isUsingPhoto = false;
+            }
+        }
+
+        // Cambiar cámara
+        async function flipCamera() {
+            try {
+                appState.cameraFacingMode = appState.cameraFacingMode === 'environment' ? 'user' : 'environment';
+                await initCamera();
+                
+                logEvent('camera_flipped', { facingMode: appState.cameraFacingMode });
+                
+            } catch (error) {
+                console.error('Error cambiando cámara:', error);
+                showError('No se pudo cambiar la cámara');
+            }
+        }
+
+        // Seleccionar opción
+        function selectOption(option) {
+            if (!appState.currentFood || appState.isProcessing) return;
+            
+            appState.selectedOption = option;
+            
+            // Actualizar UI
+            elements.conservationCard.classList.remove('selected');
+            elements.recipesCard.classList.remove('selected');
+            
+            if (option === 'conservation') {
+                elements.conservationCard.classList.add('selected');
+                getAIResponse('conservation');
+            } else {
+                elements.recipesCard.classList.add('selected');
+                getAIResponse('recipes');
+            }
+            
+            logEvent('option_selected', { option, food: appState.currentFood });
+        }
+
+        // Obtener respuesta de IA
+        async function getAIResponse(option) {
+            if (!appState.currentFood || appState.isProcessing) return;
+            
+            appState.isProcessing = true;
+            
+            try {
+                // Mostrar UI de carga
+                elements.responseContainer.style.display = 'block';
+                elements.aiResponse.style.display = 'none';
+                elements.loadingIndicator.style.display = 'flex';
+                elements.errorContainer.style.display = 'none';
+                
+                // Configurar título
+                const titles = {
+                    conservation: `Conservación: ${appState.currentFood}`,
+                    recipes: `Recetas con ${appState.currentFood}`
+                };
+                elements.responseTitle.textContent = titles[option];
+                elements.aiBadge.innerHTML = option === 'conservation' 
+                    ? '<span>❄️</span><span>Conservación</span>' 
+                    : '<span>🍳</span><span>Recetas</span>';
+                
+                // Llamar a la API
+                const response = await fetch(CONFIG.API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Request-ID': generateRequestId()
+                    },
+                    body: JSON.stringify({
+                        food: appState.currentFood,
+                        option: option
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Error en la API');
+                }
+                
+                // Mostrar respuesta
+                displayAIResponse(data, option);
+                
+                logEvent('ai_response_received', {
+                    option,
+                    food: appState.currentFood,
+                    responseTime: data.processing_time,
+                    cached: data.cached || false
+                });
+                
+            } catch (error) {
+                console.error('Error obteniendo respuesta de IA:', error);
+                displayError('No se pudo obtener la respuesta de IA. Intenta de nuevo.');
+                
+                logEvent('ai_error', {
+                    option,
+                    food: appState.currentFood,
+                    error: error.message
+                });
+                
+            } finally {
+                appState.isProcessing = false;
+                elements.loadingIndicator.style.display = 'none';
+            }
+        }
+
+        // Mostrar respuesta de IA
+        function displayAIResponse(data, option) {
+            elements.responseTimestamp.textContent = 'Justo ahora';
+            elements.aiResponse.innerHTML = '';
+            
+            if (data.generated_text) {
+                // Formatear respuesta
+                let formattedText = data.generated_text
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n/g, '<br>')
+                    .replace(/\d+\.\s/g, '<br><strong>$&</strong>');
+                
+                // Añadir indicador de caché si aplica
+                if (data.cached) {
+                    formattedText = `<div style="margin-bottom: 1rem; padding: 0.75rem; background: rgba(59, 130, 246, 0.1); border-radius: var(--radius-md); color: var(--color-secondary); font-size: 0.875rem;">
+                        ⚡ Respuesta rápida desde caché
+                    </div>` + formattedText;
+                }
+                
+                // Añadir fallback warning si aplica
+                if (data.fallback) {
+                    formattedText = `<div style="margin-bottom: 1rem; padding: 0.75rem; background: rgba(245, 158, 11, 0.1); border-radius: var(--radius-md); color: var(--color-warning); font-size: 0.875rem;">
+                        ⚠️ Respuesta básica por disponibilidad limitada del servicio
+                    </div>` + formattedText;
+                }
+                
+                elements.aiResponse.innerHTML = formattedText;
+                elements.aiResponse.style.display = 'block';
+                
+                // Guardar última respuesta
+                appState.lastResponse = {
+                    option,
+                    food: appState.currentFood,
+                    response: data.generated_text,
+                    timestamp: new Date().toISOString()
+                };
+                
+            } else {
+                displayError('No se recibió respuesta del servicio de IA');
+            }
+        }
+
+        // Mostrar error
+        function displayError(message) {
+            elements.errorContainer.style.display = 'block';
+            elements.errorContainer.innerHTML = `
+                <div class="error-message">
+                    <div class="error-title">
+                        <span>⚠️</span>
+                        <span>Error</span>
+                    </div>
+                    <div>${message}</div>
+                </div>
+            `;
+        }
+
+        // Verificar conexión
+        async function checkConnection() {
+            try {
+                const response = await fetch(CONFIG.API_ENDPOINT, {
+                    method: 'HEAD',
+                    cache: 'no-store'
+                });
+                
+                if (response.ok) {
+                    elements.connectionStatus.textContent = 'Conectado ✓';
+                    elements.connectionStatus.style.color = 'var(--color-success)';
+                    return true;
+                }
+            } catch (error) {
+                console.error('Error verificando conexión:', error);
+            }
+            
+            elements.connectionStatus.textContent = 'Sin conexión';
+            elements.connectionStatus.style.color = 'var(--color-danger)';
+            return false;
+        }
+
+        // Actualizar estado
+        function updateStatus(message, type = 'info') {
+            elements.statusText.textContent = message;
+            
+            const dot = elements.statusBadge.querySelector('.status-dot');
+            dot.style.background = type === 'success' ? 'var(--color-success)' :
+                                  type === 'warning' ? 'var(--color-warning)' :
+                                  type === 'error' ? 'var(--color-danger)' :
+                                  'var(--color-gray-400)';
+        }
+
+        // Mostrar loading
+        function showLoading(message) {
+            // Podrías implementar un overlay de carga global aquí
+            console.log('Loading:', message);
+        }
+
+        // Ocultar loading
+        function hideLoading() {
+            // Implementar según necesidad
+        }
+
+        // Mostrar error genérico
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.innerHTML = `
+                <div class="error-title">
+                    <span>❌</span>
+                    <span>Error</span>
+                </div>
+                <div>${message}</div>
+            `;
+            
+            document.body.appendChild(errorDiv);
+            
+            setTimeout(() => {
+                if (errorDiv.parentNode) {
+                    errorDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // Generar ID de solicitud
+        function generateRequestId() {
+            return 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // Registrar eventos
+        function logEvent(eventName, data = {}) {
+            const eventData = {
+                event: eventName,
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                ...data
+            };
+            
+            // En producción, enviar a analytics
+            console.log('Event:', eventName, eventData);
+            
+            // Opcional: enviar a Google Analytics o similar
+            if (typeof gtag !== 'undefined') {
+                gtag('event', eventName, eventData);
+            }
+        }
+
+        // Manejar salida de la app (para WebView)
+        if (window.AppMySite) {
+            document.addEventListener('backbutton', handleBackButton, false);
+            
+            function handleBackButton() {
+                if (appState.isProcessing) {
+                    // Prevenir salida durante procesamiento
+                    return;
+                }
+                
+                // Lógica personalizada para WebView
+                if (elements.responseContainer.style.display !== 'none') {
+                    elements.responseContainer.style.display = 'none';
+                    return;
+                }
+                
+                // Si no hay nada que ocultar, salir
+                window.AppMySite.exitApp();
+            }
+        }
+
+        // Actualizar versión
+        elements.appVersion.textContent = `v${CONFIG.APP_VERSION} • `;
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Save & Taste | Escáner Inteligente de Alimentos</title>
+    
+    <!-- Meta tags para PWA y SEO -->
+    <meta name="description" content="Escanea alimentos con IA y obtén recetas saludables y consejos de conservación. Reduce desperdicios y come mejor.">
+    <meta name="keywords" content="alimentos, recetas, conservación, escáner, IA, nutrición">
+    <meta name="author" content="Save & Taste">
+    <meta name="theme-color" content="#10B981">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Save & Taste | Escáner Inteligente">
+    <meta property="og:description" content="Tu asistente de cocina con IA">
+    <meta property="og:image" content="https://yourdomain.com/og-image.png">
+    <meta property="og:url" content="https://yourdomain.com">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- TensorFlow y Teachable Machine -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.15.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+    
+    <style>
+        :root {
+            /* Sistema de colores */
+            --color-primary: #10B981;
+            --color-primary-dark: #059669;
+            --color-secondary: #3B82F6;
+            --color-secondary-dark: #2563EB;
+            --color-accent: #F59E0B;
+            --color-danger: #EF4444;
+            --color-success: #10B981;
+            --color-warning: #F59E0B;
+            
+            /* Escala de grises */
+            --color-gray-50: #F9FAFB;
+            --color-gray-100: #F3F4F6;
+            --color-gray-200: #E5E7EB;
+            --color-gray-300: #D1D5DB;
+            --color-gray-400: #9CA3AF;
+            --color-gray-500: #6B7280;
+            --color-gray-600: #4B5563;
+            --color-gray-700: #374151;
+            --color-gray-800: #1F2937;
+            --color-gray-900: #111827;
+            
+            /* Sombras */
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+            
+            /* Bordes */
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            --radius-2xl: 1.5rem;
+            
+            /* Tipografía */
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-heading: 'Poppins', var(--font-sans);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: var(--font-sans);
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            color: var(--color-gray-800);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) 
+                     env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+        
+        /* Header mejorado */
+        .app-header {
+            background: white;
+            padding: 1rem 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+            border-bottom: 1px solid var(--color-gray-100);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .logo-icon {
+            font-size: 1.75rem;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .logo-text {
+            font-family: var(--font-heading);
+            font-weight: 600;
+            font-size: 1.25rem;
+            background: linear-gradient(135deg, var(--color-gray-800), var(--color-gray-600));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            background: var(--color-gray-100);
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--color-gray-600);
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+        
+        .status-dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+            background: var(--color-success);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Scanner section mejorada */
+        .scanner-section {
+            max-width: 800px;
+            margin: 1.5rem auto;
+            padding: 0 1rem;
+        }
+        
+        .scanner-container {
+            background: white;
+            border-radius: var(--radius-2xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+        }
+        
+        .camera-viewport {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #webcam-viewer {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        #image-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            display: none;
+        }
+        
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .scanning-grid {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 70%;
+            height: 50%;
+            border: 2px solid rgba(16, 185, 129, 0.6);
+            border-radius: var(--radius-xl);
+            animation: pulse-border 3s ease-in-out infinite;
+        }
+        
+        .scanning-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                var(--color-primary) 50%, 
+                transparent 100%);
+            box-shadow: 0 0 20px var(--color-primary);
+            animation: scan 2s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(16, 185, 129, 0.6); }
+            50% { border-color: rgba(59, 130, 246, 0.6); }
+        }
+        
+        .camera-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            padding: 1.25rem;
+            background: rgba(0, 0, 0, 0.9);
+        }
+        
+        /* Botones mejorados */
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-family: var(--font-sans);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
+        }
+        
+        .btn:active::after {
+            animation: ripple 0.6s ease-out;
+        }
+        
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(20, 20);
+                opacity: 0;
+            }
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--color-secondary), var(--color-secondary-dark));
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+        }
+        
+        .btn-outline {
+            background: white;
+            color: var(--color-gray-700);
+            border: 1px solid var(--color-gray-200);
+        }
+        
+        .btn-outline:hover:not(:disabled) {
+            background: var(--color-gray-50);
+            border-color: var(--color-gray-300);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        /* Upload section mejorada */
+        .upload-section {
+            padding: 1.25rem;
+            background: white;
+            border-radius: var(--radius-xl);
+            margin: 1rem 0;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .upload-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 2rem;
+            border: 2px dashed var(--color-gray-300);
+            border-radius: var(--radius-lg);
+            background: var(--color-gray-50);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .upload-label:hover {
+            border-color: var(--color-primary);
+            background: rgba(16, 185, 129, 0.05);
+        }
+        
+        .upload-icon {
+            font-size: 2.5rem;
+            color: var(--color-gray-400);
+        }
+        
+        /* Detection results mejorado */
+        .detection-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .food-name {
+            font-family: var(--font-heading);
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--color-gray-900);
+            margin-bottom: 0.5rem;
+        }
+        
+        .confidence-meter {
+            margin: 1rem 0;
+        }
+        
+        .confidence-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--color-gray-600);
+        }
+        
+        .meter-bar {
+            height: 0.5rem;
+            background: var(--color-gray-200);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+        
+        .meter-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-success));
+            border-radius: var(--radius-full);
+            transition: width 0.8s ease;
+            position: relative;
+        }
+        
+        .meter-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.3), 
+                transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        /* Action buttons mejorados */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .action-card {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 1.75rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .action-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+        }
+        
+        .action-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+        
+        .action-card.selected {
+            border-color: var(--color-primary);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), transparent);
+        }
+        
+        .action-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .action-title {
+            font-family: var(--font-heading);
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--color-gray-900);
+        }
+        
+        .action-description {
+            color: var(--color-gray-600);
+            font-size: 0.9375rem;
+            line-height: 1.5;
+        }
+        
+        /* AI Response mejorado */
+        .response-container {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 1.75rem;
+            margin: 1.5rem 0;
+            box-shadow: var(--shadow-lg);
+            min-height: 300px;
+        }
+        
+        .response-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--color-gray-200);
+        }
+        
+        .response-title {
+            font-family: var(--font-heading);
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-gray-900);
+        }
+        
+        .response-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.875rem;
+            color: var(--color-gray-500);
+        }
+        
+        .response-content {
+            line-height: 1.7;
+            color: var(--color-gray-700);
+            white-space: pre-line;
+            font-size: 1.0625rem;
+        }
+        
+        .response-content h3 {
+            font-size: 1.125rem;
+            color: var(--color-gray-900);
+            margin: 1.5rem 0 0.75rem;
+        }
+        
+        .response-content ul, .response-content ol {
+            padding-left: 1.5rem;
+            margin: 0.75rem 0;
+        }
+        
+        .response-content li {
+            margin: 0.5rem 0;
+        }
+        
+        .ai-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.25rem 0.75rem;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--color-primary-dark);
+        }
+        
+        /* Loading states mejorados */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            text-align: center;
+        }
+        
+        .ai-loader {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        
+        .ai-loader .dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: var(--color-primary);
+            border-radius: 50%;
+            animation: ai-loader 1.2s linear infinite;
+        }
+        
+        .ai-loader .dot:nth-child(1) {
+            animation-delay: 0s;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .ai-loader .dot:nth-child(2) {
+            animation-delay: 0.1s;
+            top: 10px;
+            right: 10px;
+        }
+        
+        .ai-loader .dot:nth-child(3) {
+            animation-delay: 0.2s;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%);
+        }
+        
+        .ai-loader .dot:nth-child(4) {
+            animation-delay: 0.3s;
+            bottom: 10px;
+            right: 10px;
+        }
+        
+        .ai-loader .dot:nth-child(5) {
+            animation-delay: 0.4s;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .ai-loader .dot:nth-child(6) {
+            animation-delay: 0.5s;
+            bottom: 10px;
+            left: 10px;
+        }
+        
+        .ai-loader .dot:nth-child(7) {
+            animation-delay: 0.6s;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+        }
+        
+        .ai-loader .dot:nth-child(8) {
+            animation-delay: 0.7s;
+            top: 10px;
+            left: 10px;
+        }
+        
+        @keyframes ai-loader {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(0.3);
+                opacity: 0.5;
+            }
+        }
+        
+        /* Error states */
+        .error-message {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            margin: 1rem 0;
+        }
+        
+        .error-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--color-danger);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Footer mejorado */
+        .app-footer {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--color-gray-500);
+            font-size: 0.875rem;
+            margin-top: 2rem;
+            border-top: 1px solid var(--color-gray-200);
+        }
+        
+        .tech-stack {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .tech-badge {
+            padding: 0.375rem 0.75rem;
+            background: var(--color-gray-100);
+            border-radius: var(--radius-full);
+            font-weight: 500;
+            color: var(--color-gray-600);
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 640px) {
+            .app-header {
+                padding: 0.75rem 1rem;
+            }
+            
+            .scanner-section {
+                margin: 1rem auto;
+                padding: 0 0.75rem;
+            }
+            
+            .action-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .camera-controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn {
+                padding: 0.75rem 1.25rem;
+            }
+        }
+        
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-gray-50: #111827;
+                --color-gray-100: #1F2937;
+                --color-gray-200: #374151;
+                --color-gray-300: #4B5563;
+                --color-gray-400: #6B7280;
+                --color-gray-500: #9CA3AF;
+                --color-gray-600: #D1D5DB;
+                --color-gray-700: #E5E7EB;
+                --color-gray-800: #F3F4F6;
+                --color-gray-900: #F9FAFB;
+            }
+            
+            body {
+                background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+                color: var(--color-gray-300);
+            }
+            
+            .scanner-container,
+            .detection-card,
+            .action-card,
+            .response-container,
+            .upload-section {
+                background: var(--color-gray-800);
+                color: var(--color-gray-300);
+            }
+            
+            .app-header {
+                background: var(--color-gray-900);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="logo-container">
+            <div class="logo-icon">🥗</div>
+            <div class="logo-text">Save & Taste</div>
+        </div>
+        <div class="status-badge" id="statusBadge">
+            <span class="status-dot"></span>
+            <span id="statusText">Conectando...</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- Scanner Section -->
+        <section class="scanner-section">
+            <div class="scanner-container">
+                <div class="camera-viewport">
+                    <div id="webcam-viewer"></div>
+                    <img id="image-preview" src="#" alt="Vista previa">
+                    <div class="scanner-overlay">
+                        <div class="scanning-grid"></div>
+                        <div class="scanning-line"></div>
+                    </div>
+                </div>
+                
+                <div class="camera-controls">
+                    <button class="btn btn-primary" id="captureBtn" onclick="captureImage()" disabled>
+                        <span>📸</span>
+                        <span>Capturar</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="flipCamera()">
+                        <span>🔄</span>
+                        <span>Cambiar cámara</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Upload Section -->
+        <section class="upload-section">
+            <label class="upload-label" for="file-input">
+                <div class="upload-icon">📁</div>
+                <div style="text-align: center;">
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">O sube una foto</div>
+                    <div style="font-size: 0.875rem; color: var(--color-gray-500);">
+                        JPG, PNG o GIF • Máx. 5MB
+                    </div>
+                </div>
+            </label>
+            <input type="file" id="file-input" accept="image/*" capture="environment" style="display: none;" onchange="handleFileUpload(event)">
+        </section>
+
+        <!-- Detection Results -->
+        <div id="detectionResults" class="detection-card" style="display: none;">
+            <div class="food-name" id="detectedFood">---</div>
+            <div class="confidence-meter">
+                <div class="confidence-label">
+                    <span>Confianza de detección</span>
+                    <span id="confidenceValue">0%</span>
+                </div>
+                <div class="meter-bar">
+                    <div class="meter-fill" id="confidenceBar"></div>
+                </div>
+            </div>
+            <div style="margin-top: 1rem; font-size: 0.875rem; color: var(--color-gray-500);">
+                Haz clic en una opción para obtener sugerencias de IA
+            </div>
+        </div>
+
+        <!-- Action Cards -->
+        <section class="scanner-section">
+            <div class="action-grid">
+                <div class="action-card" onclick="selectOption('conservation')" id="conservationCard">
+                    <div class="action-icon">❄️</div>
+                    <div class="action-title">Conservación</div>
+                    <div class="action-description">
+                        Aprende a almacenar y prolongar la frescura de tus alimentos
+                    </div>
+                </div>
+                
+                <div class="action-card" onclick="selectOption('recipes')" id="recipesCard">
+                    <div class="action-icon">🍳</div>
+                    <div class="action-title">Recetas</div>
+                    <div class="action-description">
+                        Descubre recetas saludables y deliciosas con lo que tienes
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Response -->
+        <section class="scanner-section">
+            <div class="response-container" id="responseContainer" style="display: none;">
+                <div class="response-header">
+                    <div class="response-title" id="responseTitle">Sugerencias de IA</div>
+                    <div class="response-meta">
+                        <span class="ai-badge" id="aiBadge">
+                            <span>🤖</span>
+                            <span>IA</span>
+                        </span>
+                        <span id="responseTimestamp">Justo ahora</span>
+                    </div>
+                </div>
+                
+                <div class="loading-container" id="loadingIndicator" style="display: none;">
+                    <div class="ai-loader">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                    </div>
+                    <div style="font-weight: 600; margin-bottom: 0.5rem;">Generando sugerencias...</div>
+                    <div style="color: var(--color-gray-500); font-size: 0.875rem;">
+                        Esto puede tomar unos segundos
+                    </div>
+                </div>
+                
+                <div class="response-content" id="aiResponse"></div>
+                
+                <div id="errorContainer" style="display: none;"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="tech-stack">
+            <div class="tech-badge">
+                <span>🤖</span>
+                <span>Teachable Machine</span>
+            </div>
+            <div class="tech-badge">
+                <span>⚡</span>
+                <span>Hugging Face</span>
+            </div>
+            <div class="tech-badge">
+                <span>🌐</span>
+                <span>Vercel</span>
+            </div>
+        </div>
+        <div style="margin-bottom: 0.5rem;">
+            <span id="appVersion">v2.0.0 • </span>
+            <span id="connectionStatus">Conectado</span>
+        </div>
+        <div>© 2024 Save & Taste. Tu asistente de cocina inteligente.</div>
+    </footer>
+
+    <script>
+        // Configuración
+        const CONFIG = {
+            MODEL_URL: "https://teachablemachine.withgoogle.com/models/_UsIOfbEQ/",
+            MIN_CONFIDENCE: 0.65,
+            API_ENDPOINT: "/api/chat",
+            APP_VERSION: "2.0.0"
+        };
+
+        // Estado de la aplicación
+        let appState = {
+            model: null,
+            webcam: null,
+            currentFood: "",
+            currentConfidence: 0,
+            selectedOption: null,
+            isProcessing: false,
+            cameraFacingMode: "environment",
+            isUsingPhoto: false,
+            lastResponse: null
+        };
+
+        // Elementos DOM
+        const elements = {
+            webcamViewer: document.getElementById('webcam-viewer'),
+            imagePreview: document.getElementById('image-preview'),
+            statusBadge: document.getElementById('statusBadge'),
+            statusText: document.getElementById('statusText'),
+            detectedFood: document.getElementById('detectedFood'),
+            confidenceValue: document.getElementById('confidenceValue'),
+            confidenceBar: document.getElementById('confidenceBar'),
+            detectionResults: document.getElementById('detectionResults'),
+            conservationCard: document.getElementById('conservationCard'),
+            recipesCard: document.getElementById('recipesCard'),
+            responseContainer: document.getElementById('responseContainer'),
+            responseTitle: document.getElementById('responseTitle'),
+            aiBadge: document.getElementById('aiBadge'),
+            responseTimestamp: document.getElementById('responseTimestamp'),
+            aiResponse: document.getElementById('aiResponse'),
+            loadingIndicator: document.getElementById('loadingIndicator'),
+            errorContainer: document.getElementById('errorContainer'),
+            captureBtn: document.getElementById('captureBtn'),
+            appVersion: document.getElementById('appVersion'),
+            connectionStatus: document.getElementById('connectionStatus')
+        };
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                updateStatus('Iniciando aplicación...', 'warning');
+                
+                // Cargar modelo
+                await loadModel();
+                
+                // Iniciar cámara
+                await initCamera();
+                
+                // Verificar conexión
+                await checkConnection();
+                
+                // Iniciar loop de detección
+                startDetectionLoop();
+                
+                updateStatus('Listo para escanear', 'success');
+                
+                // Registrar evento de inicio
+                logEvent('app_start', { version: CONFIG.APP_VERSION });
+                
+            } catch (error) {
+                console.error('Error inicializando:', error);
+                updateStatus('Error de inicialización', 'error');
+                showError('No se pudo iniciar la aplicación. Por favor, recarga la página.');
+            }
+        });
+
+        // Cargar modelo de Teachable Machine
+        async function loadModel() {
+            try {
+                elements.statusText.textContent = 'Cargando modelo...';
+                
+                const modelURL = CONFIG.MODEL_URL + "model.json";
+                const metadataURL = CONFIG.MODEL_URL + "metadata.json";
+                
+                appState.model = await tmImage.load(modelURL, metadataURL);
+                
+                console.log('Modelo cargado:', appState.model);
+                logEvent('model_loaded', { model: CONFIG.MODEL_URL });
+                
+            } catch (error) {
+                console.error('Error cargando modelo:', error);
+                throw new Error('No se pudo cargar el modelo de detección');
+            }
+        }
+
+        // Inicializar cámara
+        async function initCamera() {
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Cámara no disponible');
+                }
+                
+                const constraints = {
+                    video: {
+                        facingMode: appState.cameraFacingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+                
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                if (appState.webcam) {
+                    appState.webcam.stop();
+                }
+                
+                appState.webcam = new tmImage.Webcam(720, 720, true);
+                await appState.webcam.setup(constraints);
+                await appState.webcam.play();
+                
+                elements.webcamViewer.appendChild(appState.webcam.canvas);
+                elements.captureBtn.disabled = false;
+                
+                logEvent('camera_initialized', { facingMode: appState.cameraFacingMode });
+                
+            } catch (error) {
+                console.error('Error inicializando cámara:', error);
+                showError('No se pudo acceder a la cámara. Usa la opción de subir foto.');
+                elements.statusText.textContent = 'Cámara no disponible';
+            }
+        }
+
+        // Loop de detección
+        function startDetectionLoop() {
+            async function loop() {
+                if (!appState.isUsingPhoto && appState.webcam && appState.model) {
+                    appState.webcam.update();
+                    await detectFood(appState.webcam.canvas);
+                }
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        // Detectar alimento
+        async function detectFood(imageElement) {
+            try {
+                const predictions = await appState.model.predict(imageElement);
+                
+                let highestConfidence = 0;
+                let detectedClass = "";
+                
+                predictions.forEach(prediction => {
+                    if (prediction.probability > highestConfidence) {
+                        highestConfidence = prediction.probability;
+                        detectedClass = prediction.className;
+                    }
+                });
+                
+                if (highestConfidence > CONFIG.MIN_CONFIDENCE && detectedClass !== appState.currentFood) {
+                    appState.currentFood = detectedClass;
+                    appState.currentConfidence = highestConfidence;
+                    
+                    updateDetectionUI(detectedClass, highestConfidence);
+                    
+                    logEvent('food_detected', {
+                        food: detectedClass,
+                        confidence: highestConfidence
+                    });
+                }
+                
+            } catch (error) {
+                console.error('Error en detección:', error);
+            }
+        }
+
+        // Actualizar UI de detección
+        function updateDetectionUI(food, confidence) {
+            elements.detectedFood.textContent = food;
+            elements.confidenceValue.textContent = `${(confidence * 100).toFixed(1)}%`;
+            elements.confidenceBar.style.width = `${confidence * 100}%`;
+            elements.detectionResults.style.display = 'block';
+            
+            // Animación de entrada
+            elements.detectionResults.style.animation = 'slideUp 0.3s ease';
+        }
+
+        // Capturar imagen
+        async function captureImage() {
+            if (appState.isProcessing) return;
+            
+            appState.isProcessing = true;
+            elements.captureBtn.disabled = true;
+            
+            try {
+                // Crear efecto de flash
+                flashEffect();
+                
+                // Crear canvas temporal
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                canvas.width = appState.webcam.canvas.width;
+                canvas.height = appState.webcam.canvas.height;
+                
+                context.drawImage(appState.webcam.canvas, 0, 0, canvas.width, canvas.height);
+                
+                // Procesar imagen
+                await processImage(canvas);
+                
+                logEvent('image_captured', {
+                    source: 'camera',
+                    resolution: `${canvas.width}x${canvas.height}`
+                });
+                
+            } catch (error) {
+                console.error('Error capturando imagen:', error);
+                showError('Error al capturar la foto');
+            } finally {
+                appState.isProcessing = false;
+                elements.captureBtn.disabled = false;
+            }
+        }
+
+        // Efecto de flash
+        function flashEffect() {
+            const flash = document.createElement('div');
+            flash.style.position = 'fixed';
+            flash.style.top = '0';
+            flash.style.left = '0';
+            flash.style.width = '100%';
+            flash.style.height = '100%';
+            flash.style.background = 'rgba(255, 255, 255, 0.9)';
+            flash.style.zIndex = '9999';
+            flash.style.animation = 'flash 0.3s ease-out';
+            
+            document.body.appendChild(flash);
+            
+            setTimeout(() => {
+                flash.remove();
+            }, 300);
+            
+            // Agregar animación CSS
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes flash {
+                    0% { opacity: 0; }
+                    50% { opacity: 1; }
+                    100% { opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Procesar imagen (capturada o subida)
+        async function processImage(canvas) {
+            try {
+                showLoading('Analizando imagen...');
+                
+                // Redimensionar si es necesario
+                const resizedCanvas = resizeCanvas(canvas, 224, 224);
+                
+                // Detectar
+                const predictions = await appState.model.predict(resizedCanvas);
+                const topPrediction = predictions[0];
+                
+                appState.currentFood = topPrediction.className;
+                appState.currentConfidence = topPrediction.probability;
+                
+                updateDetectionUI(topPrediction.className, topPrediction.probability);
+                
+                hideLoading();
+                
+                logEvent('image_processed', {
+                    food: topPrediction.className,
+                    confidence: topPrediction.probability
+                });
+                
+            } catch (error) {
+                console.error('Error procesando imagen:', error);
+                hideLoading();
+                showError('Error al analizar la imagen');
+            }
+        }
+
+        // Redimensionar canvas
+        function resizeCanvas(canvas, width, height) {
+            const resizedCanvas = document.createElement('canvas');
+            const ctx = resizedCanvas.getContext('2d');
+            
+            resizedCanvas.width = width;
+            resizedCanvas.height = height;
+            
+            ctx.drawImage(canvas, 0, 0, width, height);
+            
+            return resizedCanvas;
+        }
+
+        // Manejar subida de archivo
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Validaciones
+            if (!file.type.startsWith('image/')) {
+                showError('Por favor, selecciona una imagen válida');
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) { // 5MB
+                showError('La imagen es demasiado grande (máximo 5MB)');
+                return;
+            }
+            
+            appState.isProcessing = true;
+            appState.isUsingPhoto = true;
+            
+            try {
+                showLoading('Procesando imagen...');
+                
+                // Mostrar preview
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    
+                    img.onload = async () => {
+                        elements.imagePreview.src = img.src;
+                        elements.imagePreview.style.display = 'block';
+                        elements.webcamViewer.style.display = 'none';
+                        
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        
+                        await processImage(canvas);
+                        
+                        appState.isUsingPhoto = false;
+                    };
+                };
+                
+                reader.readAsDataURL(file);
+                
+                logEvent('file_uploaded', {
+                    type: file.type,
+                    size: file.size
+                });
+                
+            } catch (error) {
+                console.error('Error subiendo archivo:', error);
+                hideLoading();
+                showError('Error al procesar la imagen');
+                appState.isProcessing = false;
+                appState.isUsingPhoto = false;
+            }
+        }
+
+        // Cambiar cámara
+        async function flipCamera() {
+            try {
+                appState.cameraFacingMode = appState.cameraFacingMode === 'environment' ? 'user' : 'environment';
+                await initCamera();
+                
+                logEvent('camera_flipped', { facingMode: appState.cameraFacingMode });
+                
+            } catch (error) {
+                console.error('Error cambiando cámara:', error);
+                showError('No se pudo cambiar la cámara');
+            }
+        }
+
+        // Seleccionar opción
+        function selectOption(option) {
+            if (!appState.currentFood || appState.isProcessing) return;
+            
+            appState.selectedOption = option;
+            
+            // Actualizar UI
+            elements.conservationCard.classList.remove('selected');
+            elements.recipesCard.classList.remove('selected');
+            
+            if (option === 'conservation') {
+                elements.conservationCard.classList.add('selected');
+                getAIResponse('conservation');
+            } else {
+                elements.recipesCard.classList.add('selected');
+                getAIResponse('recipes');
+            }
+            
+            logEvent('option_selected', { option, food: appState.currentFood });
+        }
+
+        // Obtener respuesta de IA
+        async function getAIResponse(option) {
+            if (!appState.currentFood || appState.isProcessing) return;
+            
+            appState.isProcessing = true;
+            
+            try {
+                // Mostrar UI de carga
+                elements.responseContainer.style.display = 'block';
+                elements.aiResponse.style.display = 'none';
+                elements.loadingIndicator.style.display = 'flex';
+                elements.errorContainer.style.display = 'none';
+                
+                // Configurar título
+                const titles = {
+                    conservation: `Conservación: ${appState.currentFood}`,
+                    recipes: `Recetas con ${appState.currentFood}`
+                };
+                elements.responseTitle.textContent = titles[option];
+                elements.aiBadge.innerHTML = option === 'conservation' 
+                    ? '<span>❄️</span><span>Conservación</span>' 
+                    : '<span>🍳</span><span>Recetas</span>';
+                
+                // Llamar a la API
+                const response = await fetch(CONFIG.API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Request-ID': generateRequestId()
+                    },
+                    body: JSON.stringify({
+                        food: appState.currentFood,
+                        option: option
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Error en la API');
+                }
+                
+                // Mostrar respuesta
+                displayAIResponse(data, option);
+                
+                logEvent('ai_response_received', {
+                    option,
+                    food: appState.currentFood,
+                    responseTime: data.processing_time,
+                    cached: data.cached || false
+                });
+                
+            } catch (error) {
+                console.error('Error obteniendo respuesta de IA:', error);
+                displayError('No se pudo obtener la respuesta de IA. Intenta de nuevo.');
+                
+                logEvent('ai_error', {
+                    option,
+                    food: appState.currentFood,
+                    error: error.message
+                });
+                
+            } finally {
+                appState.isProcessing = false;
+                elements.loadingIndicator.style.display = 'none';
+            }
+        }
+
+        // Mostrar respuesta de IA
+        function displayAIResponse(data, option) {
+            elements.responseTimestamp.textContent = 'Justo ahora';
+            elements.aiResponse.innerHTML = '';
+            
+            if (data.generated_text) {
+                // Formatear respuesta
+                let formattedText = data.generated_text
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n/g, '<br>')
+                    .replace(/\d+\.\s/g, '<br><strong>$&</strong>');
+                
+                // Añadir indicador de caché si aplica
+                if (data.cached) {
+                    formattedText = `<div style="margin-bottom: 1rem; padding: 0.75rem; background: rgba(59, 130, 246, 0.1); border-radius: var(--radius-md); color: var(--color-secondary); font-size: 0.875rem;">
+                        ⚡ Respuesta rápida desde caché
+                    </div>` + formattedText;
+                }
+                
+                // Añadir fallback warning si aplica
+                if (data.fallback) {
+                    formattedText = `<div style="margin-bottom: 1rem; padding: 0.75rem; background: rgba(245, 158, 11, 0.1); border-radius: var(--radius-md); color: var(--color-warning); font-size: 0.875rem;">
+                        ⚠️ Respuesta básica por disponibilidad limitada del servicio
+                    </div>` + formattedText;
+                }
+                
+                elements.aiResponse.innerHTML = formattedText;
+                elements.aiResponse.style.display = 'block';
+                
+                // Guardar última respuesta
+                appState.lastResponse = {
+                    option,
+                    food: appState.currentFood,
+                    response: data.generated_text,
+                    timestamp: new Date().toISOString()
+                };
+                
+            } else {
+                displayError('No se recibió respuesta del servicio de IA');
+            }
+        }
+
+        // Mostrar error
+        function displayError(message) {
+            elements.errorContainer.style.display = 'block';
+            elements.errorContainer.innerHTML = `
+                <div class="error-message">
+                    <div class="error-title">
+                        <span>⚠️</span>
+                        <span>Error</span>
+                    </div>
+                    <div>${message}</div>
+                </div>
+            `;
+        }
+
+        // Verificar conexión
+        async function checkConnection() {
+            try {
+                const response = await fetch(CONFIG.API_ENDPOINT, {
+                    method: 'HEAD',
+                    cache: 'no-store'
+                });
+                
+                if (response.ok) {
+                    elements.connectionStatus.textContent = 'Conectado ✓';
+                    elements.connectionStatus.style.color = 'var(--color-success)';
+                    return true;
+                }
+            } catch (error) {
+                console.error('Error verificando conexión:', error);
+            }
+            
+            elements.connectionStatus.textContent = 'Sin conexión';
+            elements.connectionStatus.style.color = 'var(--color-danger)';
+            return false;
+        }
+
+        // Actualizar estado
+        function updateStatus(message, type = 'info') {
+            elements.statusText.textContent = message;
+            
+            const dot = elements.statusBadge.querySelector('.status-dot');
+            dot.style.background = type === 'success' ? 'var(--color-success)' :
+                                  type === 'warning' ? 'var(--color-warning)' :
+                                  type === 'error' ? 'var(--color-danger)' :
+                                  'var(--color-gray-400)';
+        }
+
+        // Mostrar loading
+        function showLoading(message) {
+            // Podrías implementar un overlay de carga global aquí
+            console.log('Loading:', message);
+        }
+
+        // Ocultar loading
+        function hideLoading() {
+            // Implementar según necesidad
+        }
+
+        // Mostrar error genérico
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.innerHTML = `
+                <div class="error-title">
+                    <span>❌</span>
+                    <span>Error</span>
+                </div>
+                <div>${message}</div>
+            `;
+            
+            document.body.appendChild(errorDiv);
+            
+            setTimeout(() => {
+                if (errorDiv.parentNode) {
+                    errorDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // Generar ID de solicitud
+        function generateRequestId() {
+            return 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // Registrar eventos
+        function logEvent(eventName, data = {}) {
+            const eventData = {
+                event: eventName,
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                ...data
+            };
+            
+            // En producción, enviar a analytics
+            console.log('Event:', eventName, eventData);
+            
+            // Opcional: enviar a Google Analytics o similar
+            if (typeof gtag !== 'undefined') {
+                gtag('event', eventName, eventData);
+            }
+        }
+
+        // Manejar salida de la app (para WebView)
+        if (window.AppMySite) {
+            document.addEventListener('backbutton', handleBackButton, false);
+            
+            function handleBackButton() {
+                if (appState.isProcessing) {
+                    // Prevenir salida durante procesamiento
+                    return;
+                }
+                
+                // Lógica personalizada para WebView
+                if (elements.responseContainer.style.display !== 'none') {
+                    elements.responseContainer.style.display = 'none';
+                    return;
+                }
+                
+                // Si no hay nada que ocultar, salir
+                window.AppMySite.exitApp();
+            }
+        }
+
+        // Actualizar versión
+        elements.appVersion.textContent = `v${CONFIG.APP_VERSION} • `;
+    </script>
 </body>
 </html>
