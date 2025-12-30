@@ -1,3 +1,52 @@
 {
-  "type": "module"
+  "name": "save-and-taste",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Intelligent Food Scanner with AI - Save & Taste",
+  "main": "api/chat.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "node api/chat.js",
+    "deploy": "vercel --prod",
+    "test": "jest --passWithNoTests",
+    "lint": "eslint . --ext .js",
+    "predeploy": "npm run lint",
+    "health": "curl -X GET https://your-app.vercel.app/api/chat"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@vercel/node": "^3.0.0",
+    "vercel": "^33.0.0",
+    "eslint": "^8.56.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.29.1",
+    "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": ">=18.x",
+    "npm": ">=9.x"
+  },
+  "keywords": [
+    "food-scanner",
+    "ai",
+    "teachable-machine",
+    "huggingface",
+    "nutrition",
+    "recipes",
+    "food-preservation",
+    "sustainability"
+  ],
+  "author": "Save & Taste Team",
+  "license": "Proprietary",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/D1029473/escaner"
+  },
+  "homepage": "https://saveandtaste.app",
+  "bugs": {
+    "url": "https://github.com/D1029473/escaner/issues"
+  }
 }
