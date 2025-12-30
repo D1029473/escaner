@@ -47,24 +47,25 @@ export default async function handler(req, res) {
         log(`Token: ${HF_TOKEN.substring(0, 6)}...${HF_TOKEN.substring(HF_TOKEN.length - 4)}`);
         log(`Longitud token: ${HF_TOKEN.length} caracteres`);
 
-        // NUEVA API de HuggingFace (formato OpenAI)
-        // Usando Qwen 2.5 - Excelente en español y sin razonamiento visible
-        const MODEL = "Qwen/Qwen2.5-1.5B-Instruct:hf-inference";
+        // Usar proveedor GRATUITO real: Sambanova (o Together AI)
+        // Estos proveedores SÍ tienen tiers gratuitos para chat
+        const MODEL = "meta-llama/Llama-3.2-3B-Instruct";  // Sin :provider suffix
         const API_URL = "https://router.huggingface.co/v1/chat/completions";
         
         log(`Modelo: ${MODEL}`);
         log(`Endpoint: ${API_URL}`);
+        log(`Provider: auto (HF routing gratuito)`);
 
         const requestBody = {
             model: MODEL,
             messages: [
                 {
                     role: "system",
-                    content: "Eres un asistente de cocina conciso. Responde SOLO con los consejos, sin explicaciones previas ni razonamientos."
+                    content: "Eres un asistente de cocina conciso. Responde SOLO con 3 consejos numerados, sin explicaciones previas."
                 },
                 {
                     role: "user",
-                    content: `Dame 3 consejos muy cortos en español para cocinar o aprovechar: ${food}`
+                    content: `3 consejos cortos en español para: ${food}`
                 }
             ],
             max_tokens: 150,
