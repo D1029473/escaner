@@ -7,33 +7,278 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <style>
-        :root { --primary: #27ae60; --primary-light: #2ecc71; --dark: #2c3e50; --light: #f9fbf9; --white: #ffffff; }
-        body { font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; background-color: var(--light); color: var(--dark); display: flex; flex-direction: column; align-items: center; }
-        .header { width: 100%; background: var(--white); padding: 20px 0; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
-        .header h1 { margin: 0; font-size: 1.2rem; letter-spacing: 2px; color: var(--primary); font-weight: 800; }
-        #vision-container { width: 100%; max-width: 500px; height: 380px; background: #000; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; }
-        canvas, #image-preview { height: 100%; width: auto; object-fit: cover; }
-        .scanner-line { position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: var(--primary-light); box-shadow: 0 0 15px var(--primary-light); animation: scan 3s infinite ease-in-out; z-index: 5; opacity: 0.7; }
-        @keyframes scan { 0%, 100% { top: 0%; } 50% { top: 100%; } }
-        .info-card { width: 90%; max-width: 420px; margin: -40px 20px 30px 20px; background: var(--white); border-radius: 30px; padding: 30px; box-shadow: 0 12px 40px rgba(0,0,0,0.12); z-index: 10; box-sizing: border-box; }
-        #food-name { font-size: 1.8rem; font-weight: 800; color: var(--dark); margin-bottom: 25px; display: block; }
-        .btn { border: none; padding: 18px; border-radius: 18px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: all 0.3s ease; width: 100%; margin-bottom: 10px; }
-        .btn-ia { background: var(--primary); color: white; box-shadow: 0 8px 20px rgba(39, 174, 96, 0.3); }
-        .btn-ia:disabled { background: #dcdde1; box-shadow: none; }
-        #ai-response { margin-top: 25px; text-align: left; background: #fdfdfd; padding: 20px; border-radius: 20px; display: none; border: 1px solid #edf2f0; line-height: 1.6; }
-        .loader { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; display: inline-block; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        :root { 
+            --primary: #007AFF; 
+            --primary-dark: #0051D5;
+            --success: #34C759;
+            --dark: #1D1D1F; 
+            --light: #F5F5F7; 
+            --white: #FFFFFF;
+            --card-shadow: 0 2px 16px rgba(0,0,0,0.12);
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            margin: 0; 
+            background: var(--light);
+            color: var(--dark); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .header { 
+            width: 100%; 
+            background: var(--white); 
+            padding: 16px 0; 
+            text-align: center; 
+            box-shadow: 0 1px 0 rgba(0,0,0,0.08);
+            position: sticky; 
+            top: 0; 
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header h1 { 
+            margin: 0; 
+            font-size: clamp(1.1rem, 3vw, 1.3rem);
+            letter-spacing: -0.5px; 
+            color: var(--dark); 
+            font-weight: 600;
+        }
+        
+        #vision-container { 
+            width: 100%; 
+            max-width: 600px; 
+            aspect-ratio: 4/3;
+            background: #000; 
+            position: relative; 
+            overflow: hidden; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            border-radius: 0;
+        }
+        
+        canvas, #image-preview { 
+            height: 100%; 
+            width: auto; 
+            object-fit: cover; 
+        }
+        
+        .scanner-line { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 2px; 
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+            animation: scan 2.5s infinite ease-in-out; 
+            z-index: 5; 
+            opacity: 0.8;
+        }
+        
+        @keyframes scan { 
+            0%, 100% { top: 0%; } 
+            50% { top: 100%; } 
+        }
+        
+        .main-content {
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+        }
+        
+        .info-card { 
+            background: var(--white); 
+            border-radius: 20px; 
+            padding: clamp(20px, 5vw, 32px);
+            box-shadow: var(--card-shadow);
+            margin-bottom: 16px;
+        }
+        
+        #food-name { 
+            font-size: clamp(1.5rem, 5vw, 2rem);
+            font-weight: 600; 
+            color: var(--dark); 
+            margin-bottom: 20px; 
+            display: block;
+            letter-spacing: -0.5px;
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .btn { 
+            border: none; 
+            padding: clamp(14px, 3vw, 16px);
+            border-radius: 12px; 
+            font-weight: 600; 
+            font-size: clamp(0.9rem, 2.5vw, 1rem);
+            cursor: pointer; 
+            transition: all 0.2s ease;
+            width: 100%;
+            font-family: inherit;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn:active {
+            transform: scale(0.97);
+        }
+        
+        .btn-conservation { 
+            background: var(--primary); 
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+        }
+        
+        .btn-conservation:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-recipe { 
+            background: var(--success); 
+            color: white;
+            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3);
+        }
+        
+        .btn-recipe:hover {
+            background: #28A745;
+        }
+        
+        .btn:disabled { 
+            background: #E5E5E7;
+            color: #86868B;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+        
+        .btn-upload {
+            background: var(--light);
+            color: var(--dark);
+            border: 1px solid #D2D2D7;
+        }
+        
+        .btn-upload:hover {
+            background: #E8E8ED;
+        }
+        
+        #ai-response { 
+            margin-top: 20px; 
+            text-align: left; 
+            background: var(--light);
+            padding: clamp(16px, 4vw, 20px);
+            border-radius: 16px; 
+            display: none;
+            line-height: 1.6;
+            font-size: clamp(0.9rem, 2.5vw, 1rem);
+        }
+        
+        #ai-response b {
+            display: block;
+            margin-bottom: 12px;
+            font-size: clamp(1rem, 2.8vw, 1.1rem);
+        }
+        
+        #ai-text {
+            color: #1D1D1F;
+        }
+        
+        .loader { 
+            width: 18px; 
+            height: 18px; 
+            border: 2px solid rgba(255,255,255,0.3); 
+            border-radius: 50%; 
+            border-top-color: #fff; 
+            animation: spin 0.8s linear infinite; 
+            display: inline-block;
+        }
+        
+        @keyframes spin { 
+            to { transform: rotate(360deg); } 
+        }
+        
+        .recipe-link {
+            display: block;
+            margin-top: 16px;
+            padding: 16px;
+            background: var(--white);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--primary);
+            font-weight: 500;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.2s ease;
+        }
+        
+        .recipe-link:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            transform: translateY(-2px);
+        }
+        
+        .recipe-link::after {
+            content: " →";
+            font-size: 1.2em;
+        }
+        
+        /* Responsive adjustments */
+        @media (min-width: 768px) {
+            #vision-container {
+                border-radius: 20px;
+                margin-top: 20px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .button-group {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="header"><h1>SAVE AND TASTE</h1></div>
-    <div id="vision-container"><div class="scanner-line"></div><div id="webcam-viewer"></div><img id="image-preview" src="#"></div>
-    <div class="info-card">
-        <span id="food-name">Iniciando...</span>
-        <button class="btn btn-ia" id="btn-ia" onclick="preguntarIA()" disabled>✨ Obtener trucos de cocina</button>
-        <button class="btn" style="background:#f0f3f1" onclick="document.getElementById('file-input').click()">📷 Subir foto</button>
-        <input type="file" id="file-input" style="display:none" accept="image/*" onchange="handleFileUpload(event)">
-        <div id="ai-response"><b>🌱 Sugerencias:</b><br><span id="ai-text"></span></div>
+    
+    <div id="vision-container">
+        <div class="scanner-line"></div>
+        <div id="webcam-viewer"></div>
+        <img id="image-preview" src="#" style="display:none;">
+    </div>
+    
+    <div class="main-content">
+        <div class="info-card">
+            <span id="food-name">Iniciando...</span>
+            
+            <div class="button-group">
+                <button class="btn btn-conservation" id="btn-conservation" onclick="getConservationTips()" disabled>
+                    Conservar
+                </button>
+                <button class="btn btn-recipe" id="btn-recipe" onclick="getRecipe()" disabled>
+                    Recetas
+                </button>
+            </div>
+            
+            <button class="btn btn-upload" onclick="document.getElementById('file-input').click()">
+                📷 Subir foto
+            </button>
+            
+            <input type="file" id="file-input" style="display:none" accept="image/*" onchange="handleFileUpload(event)">
+            
+            <div id="ai-response">
+                <b id="response-title">Consejos de conservación:</b>
+                <div id="ai-text"></div>
+            </div>
+        </div>
     </div>
 
 <script>
@@ -49,22 +294,43 @@
             document.getElementById("webcam-viewer").appendChild(webcam.canvas);
             document.getElementById("food-name").innerText = "Listo";
             loop();
-        } catch (e) { document.getElementById("food-name").innerText = "Error cámara"; }
+        } catch (e) { 
+            document.getElementById("food-name").innerText = "Error cámara"; 
+        }
     }
 
-    async function loop() { if (!isUsingPhoto) { webcam.update(); await predict(webcam.canvas); window.requestAnimationFrame(loop); } }
+    async function loop() { 
+        if (!isUsingPhoto) { 
+            webcam.update(); 
+            await predict(webcam.canvas); 
+            window.requestAnimationFrame(loop); 
+        } 
+    }
 
     async function predict(img) {
         const pred = await model.predict(img);
-        let high = 0; let match = "";
-        for (let i = 0; i < pred.length; i++) { if (pred[i].probability > high) { high = pred[i].probability; match = pred[i].className; } }
-        if (high > 0.65) { currentFood = match; document.getElementById("food-name").innerText = match; document.getElementById("btn-ia").disabled = false; }
+        let high = 0; 
+        let match = "";
+        for (let i = 0; i < pred.length; i++) { 
+            if (pred[i].probability > high) { 
+                high = pred[i].probability; 
+                match = pred[i].className; 
+            } 
+        }
+        if (high > 0.65) { 
+            currentFood = match; 
+            document.getElementById("food-name").innerText = match;
+            document.getElementById("btn-conservation").disabled = false;
+            document.getElementById("btn-recipe").disabled = false;
+        }
     }
 
     async function handleFileUpload(e) {
-        isUsingPhoto = true; const reader = new FileReader();
+        isUsingPhoto = true; 
+        const reader = new FileReader();
         reader.onload = (event) => {
-            const img = new Image(); img.src = event.target.result;
+            const img = new Image(); 
+            img.src = event.target.result;
             document.getElementById("image-preview").src = img.src;
             document.getElementById("image-preview").style.display = "block";
             document.getElementById("webcam-viewer").style.display = "none";
@@ -73,48 +339,95 @@
         reader.readAsDataURL(e.target.files[0]);
     }
 
-async function preguntarIA() {
-    const txt = document.getElementById("ai-text");
-    document.getElementById("ai-response").style.display = "block";
-    txt.innerHTML = '<div class="loader"></div> Consultando...';
-    
-    try {
-        const r = await fetch("/api/chat", { 
-            method: "POST", 
-            headers: { "Content-Type": "application/json" }, 
-            body: JSON.stringify({ food: currentFood }) 
-        });
+    async function getConservationTips() {
+        const txt = document.getElementById("ai-text");
+        const responseDiv = document.getElementById("ai-response");
+        const title = document.getElementById("response-title");
         
-        const data = await r.json();
+        responseDiv.style.display = "block";
+        title.textContent = "Consejos de conservación:";
+        txt.innerHTML = '<div class="loader"></div> Consultando...';
         
-        // MOSTRAR DEBUG COMPLETO
-        if (data.debug) {
-            console.log("=== DEBUG DE LA API ===");
-            data.debug.forEach(log => console.log(log));
-            console.log("=== FIN DEBUG ===");
-        }
-        
-        if (data.error_detail) { 
+        try {
+            const r = await fetch("/api/chat", { 
+                method: "POST", 
+                headers: { "Content-Type": "application/json" }, 
+                body: JSON.stringify({ food: currentFood }) 
+            });
+            
+            const data = await r.json();
+            
+            if (data.debug) {
+                console.log("=== DEBUG DE LA API ===");
+                data.debug.forEach(log => console.log(log));
+                console.log("=== FIN DEBUG ===");
+            }
+            
+            if (data.error_detail) { 
+                txt.innerHTML = `
+                    <div style="color: #FF3B30; font-weight: 600;">Error</div>
+                    <div style="margin-top: 8px; font-size: 0.95em;">${data.error_detail}</div>
+                `;
+            } else if (data.is_loading) {
+                txt.innerHTML = data.generated_text;
+            } else {
+                let res = data.generated_text || "";
+                txt.innerHTML = res;
+            }
+            
+        } catch (e) { 
             txt.innerHTML = `
-                <div style="color: #e74c3c; font-weight: bold;">❌ Error detectado:</div>
-                <div style="margin-top: 10px;">${data.error_detail}</div>
-                ${data.debug ? '<div style="margin-top: 10px; font-size: 0.85em; opacity: 0.7;">✅ Revisa la consola del navegador (F12) para ver detalles técnicos completos</div>' : ''}
+                <div style="color: #FF3B30;">Error de conexión</div>
+                <div style="margin-top: 8px; font-size: 0.9em;">${e.message}</div>
             `;
-        } else if (data.is_loading) {
-            txt.innerHTML = data.generated_text;
-        } else {
-            let res = Array.isArray(data) ? data[0].generated_text : data.generated_text;
-            txt.innerHTML = res.includes("[/INST]") ? res.split("[/INST]").pop().trim() : res;
+            console.error("Error completo:", e);
         }
-        
-    } catch (e) { 
-        txt.innerHTML = `
-            <div style="color: #e74c3c;">❌ Error de conexión</div>
-            <div style="margin-top: 10px; font-size: 0.9em;">${e.message}</div>
-        `;
-        console.error("Error completo:", e);
     }
-}
+
+    async function getRecipe() {
+        const txt = document.getElementById("ai-text");
+        const responseDiv = document.getElementById("ai-response");
+        const title = document.getElementById("response-title");
+        
+        responseDiv.style.display = "block";
+        title.textContent = "Buscando recetas...";
+        txt.innerHTML = '<div class="loader"></div> Buscando las mejores recetas...';
+        
+        // Buscar recetas confiables en sitios web reconocidos
+        const recipeSearch = `receta ${currentFood} site:recetasgratis.net OR site:directoalpaladar.com OR site:cocina-casera.com`;
+        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(recipeSearch)}`;
+        
+        // Crear enlaces directos a sitios confiables de recetas
+        const recipeLinks = [
+            {
+                name: "RecetasGratis.net",
+                url: `https://www.recetasgratis.net/busqueda?q=${encodeURIComponent(currentFood)}`
+            },
+            {
+                name: "Directo al Paladar",
+                url: `https://www.directoalpaladar.com/search?q=${encodeURIComponent(currentFood)}`
+            },
+            {
+                name: "Cocina Casera",
+                url: `https://www.cocina-casera.com/?s=${encodeURIComponent(currentFood)}`
+            }
+        ];
+        
+        setTimeout(() => {
+            title.textContent = "Recetas recomendadas:";
+            txt.innerHTML = `
+                <p style="margin-bottom: 16px; color: #86868B; font-size: 0.95em;">
+                    Encuentra recetas verificadas con ${currentFood}:
+                </p>
+                ${recipeLinks.map(link => `
+                    <a href="${link.url}" target="_blank" class="recipe-link">
+                        ${link.name}
+                    </a>
+                `).join('')}
+            `;
+        }, 800);
+    }
+
     init();
 </script>
 </body>
