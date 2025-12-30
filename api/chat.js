@@ -48,8 +48,8 @@ export default async function handler(req, res) {
         log(`Longitud token: ${HF_TOKEN.length} caracteres`);
 
         // NUEVA API de HuggingFace (formato OpenAI)
-        // Modelo gratuito con hf-inference (CPU, pero funciona)
-        const MODEL = "HuggingFaceTB/SmolLM3-3B:hf-inference";
+        // Usando Qwen 2.5 - Excelente en español y sin razonamiento visible
+        const MODEL = "Qwen/Qwen2.5-1.5B-Instruct:hf-inference";
         const API_URL = "https://router.huggingface.co/v1/chat/completions";
         
         log(`Modelo: ${MODEL}`);
@@ -59,12 +59,16 @@ export default async function handler(req, res) {
             model: MODEL,
             messages: [
                 {
+                    role: "system",
+                    content: "Eres un asistente de cocina conciso. Responde SOLO con los consejos, sin explicaciones previas ni razonamientos."
+                },
+                {
                     role: "user",
-                    content: `Dame 3 consejos muy cortos en español para cocinar o aprovechar: ${food}. Solo los consejos, sin introducción.`
+                    content: `Dame 3 consejos muy cortos en español para cocinar o aprovechar: ${food}`
                 }
             ],
-            max_tokens: 200,
-            temperature: 0.7
+            max_tokens: 150,
+            temperature: 0.5
         };
         
         log(`Request body: ${JSON.stringify(requestBody).substring(0, 200)}...`);
@@ -155,7 +159,33 @@ export default async function handler(req, res) {
             });
         }
 
-        // Limpiar texto
+        // Limpiar texto y remover razonamiento visible
+        generatedText = generatedText.trim();
+        
+        // Detectar y eliminar "chain of thought" visible
+        // Patrones comunes: "Okay...", "Let me think...", "Hmm..."
+        const thoughtPatterns = [
+            /^(Okay|Ok|Hmm|Well|Let me think|So|Alright)[,.].*?(\n\n|\*\*)/is,
+            /^.*?let me think.*?(\n\n|\*\*)/is,
+            /^.*?vamos a ver.*?(\n\n|\d\.)/is,
+            /^.*?déjame pensar.*?(\n\n|\d\.)/is
+        ];
+        
+        for (const pattern of thoughtPatterns) {
+            if (pattern.test(generatedText)) {
+                log(`Detectado razonamiento visible, limpiando...`);
+                generatedText = generatedText.replace(pattern, '');
+                break;
+            }
+        }
+        
+        // Si empieza con texto en inglés antes de los consejos, cortarlo
+        const spanishStart = generatedText.search(/[1-3][\.\)]\s*\*\*|^[1-3][\.\)]|^-\s/m);
+        if (spanishStart > 50) {
+            log(`Cortando preámbulo largo (${spanishStart} chars)`);
+            generatedText = generatedText.substring(spanishStart);
+        }
+        
         generatedText = generatedText.trim();
         
         log(`Texto final length: ${generatedText.length}`);
