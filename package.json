@@ -1,11 +1,9 @@
 {
-  "name": "save-and-taste",
-  "version": "2.2.0",
+  "name": "freshscan-ai",
+  "version": "2.3.0",
+  "description": "App de análisis de alimentos con IA y detección de deterioro",
   "type": "module",
-  "dependencies": {
-    "node-fetch": "^3.3.2"
-  },
   "engines": {
-    "node": ">=18.x"
+    "node": ">=18"
   }
 }
