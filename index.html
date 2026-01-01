@@ -233,16 +233,27 @@
         <section class="spoil-analysis" id="foodSelection">
             <h2 style="margin-bottom: 20px;">Identifica tu alimento</h2>
             <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-                <button class="food-btn" data-food="manzana">🍎 Manzana</button>
-                <button class="food-btn" data-food="platano">🍌 Plátano</button>
                 <button class="food-btn" data-food="tomate">🍅 Tomate</button>
                 <button class="food-btn" data-food="zanahoria">🥕 Zanahoria</button>
-                <button class="food-btn" data-food="lechuga">🥬 Lechuga</button>
-                <button class="food-btn" data-food="fresa">🍓 Fresa</button>
-                <button class="food-btn" data-food="naranja">🍊 Naranja</button>
-                <button class="food-btn" data-food="aguacate">🥑 Aguacate</button>
+                <button class="food-btn" data-food="patata">🥔 Patata</button>
                 <button class="food-btn" data-food="cebolla">🧅 Cebolla</button>
+                <button class="food-btn" data-food="pepino">🥒 Pepino</button>
+                <button class="food-btn" data-food="lechuga">🥬 Lechuga</button>
+                <button class="food-btn" data-food="platano">🍌 Plátano</button>
+                <button class="food-btn" data-food="fresa">🍓 Fresa</button>
+                <button class="food-btn" data-food="arroz">🍚 Arroz</button>
+                <button class="food-btn" data-food="pasta">🍝 Pasta</button>
+                <button class="food-btn" data-food="huevo">🥚 Huevo</button>
+                <button class="food-btn" data-food="queso">🧀 Queso</button>
+                <button class="food-btn" data-food="lentejas">🫘 Lentejas</button>
+                <button class="food-btn" data-food="brocoli">🥦 Brócoli</button>
+                <button class="food-btn" data-food="champinones">🍄 Champiñones</button>
+                <button class="food-btn" data-food="berenjena">🍆 Berenjena</button>
                 <button class="food-btn" data-food="pimiento">🫑 Pimiento</button>
+                <button class="food-btn" data-food="pollo">🍗 Pollo</button>
+                <button class="food-btn" data-food="pescado">🐟 Pescado</button>
+                <button class="food-btn" data-food="aguacate">🥑 Aguacate</button>
+                <button class="food-btn" data-food="manzana">🍎 Manzana</button>
                 <input type="text" id="customFood" placeholder="Otro alimento..." 
                        style="flex-grow: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px;">
             </div>
@@ -343,6 +354,491 @@
         let isSpoiled = false;
         let analysisResults = {};
         
+        // ============================================
+        // BASE DE DATOS DE FALLBACK ESPECÍFICA
+        // ============================================
+        const fallbackDatabase = {
+            recipes: {
+                "tomate": `🍽️ **RECETA EXPRESS CON TOMATE**
+⏱️ 10 minutos | 🟢 Fácil | 🌱 Saludable
+
+🥗 Ensalada rápida:
+• 2 tomates maduros en gajos
+• 1/2 cebolla en pluma
+• Aceite de oliva y sal
+• Orégano al gusto
+
+🧂 Aliño:
+• Aceite + sal + orégano
+• Mezclar y servir
+
+🔥 Versión salteada:
+1. Saltea tomate con ajo 2–3 min
+2. Añade huevo o tofu
+3. Sirve sobre pan o arroz
+
+🥤 Extra:
+• Tomate triturado con sal y aceite
+
+💡 Consejo: usa tomate bien maduro.`,
+
+                "zanahoria": `🍽️ **RECETA EXPRESS CON ZANAHORIA**
+⏱️ 15 minutos | 🟢 Fácil | 🌱 Saludable
+
+🥗 Ensalada fresca:
+• 2 zanahorias ralladas
+• Limón
+• Aceite de oliva
+
+🧂 Aliño:
+• Aceite + limón + sal
+
+🔥 Versión salteada:
+1. Saltea zanahoria con ajo
+2. Añade comino
+3. Acompaña arroz o cous cous
+
+🥤 Batido:
+• Zanahoria + naranja + agua
+
+💡 Consejo: combina con cítricos.`,
+
+                "patata": `🍽️ **RECETA EXPRESS CON PATATA**
+⏱️ 15 minutos | 🟢 Fácil | 🌱 Energética
+
+🥗 Ensalada templada:
+• Patata cocida en cubos
+• Perejil
+• Aceite y sal
+
+🧂 Aliño:
+• Aceite + vinagre
+
+🔥 Versión sartén:
+1. Dora patata cocida
+2. Añade pimentón
+3. Sirve como base
+
+🥤 Extra:
+• Puré rápido con leche
+
+💡 Consejo: no pelar para más fibra.`,
+
+                "cebolla": `🍽️ **RECETA EXPRESS CON CEBOLLA**
+⏱️ 20 minutos | 🟢 Fácil | 🌱 Vegana
+
+🥗 Ensalada:
+• Cebolla morada fina
+• Limón
+• Sal
+
+🧂 Aliño:
+• Limón + aceite
+
+🔥 Versión caramelizada:
+1. Fuego bajo 15 min
+2. Pizca de sal
+3. Ideal para tostadas
+
+🥤 Extra:
+• Cebolla asada triturada
+
+💡 Consejo: paciencia al caramelizar.`,
+
+                "pepino": `🍽️ **RECETA EXPRESS CON PEPINO**
+⏱️ 10 minutos | 🟢 Fácil | 🌱 Refrescante
+
+🥗 Ensalada fresca:
+• Pepino en rodajas
+• Yogur natural
+• Menta
+
+🧂 Aliño:
+• Yogur + limón + sal
+
+🔥 Versión tibia:
+1. Saltea rápido
+2. Añade soja
+
+🥤 Extra:
+• Pepino + limón + agua
+
+💡 Consejo: sirve bien frío.`,
+
+                "lechuga": `🍽️ **RECETA EXPRESS CON LECHUGA**
+⏱️ 10 minutos | 🟢 Fácil | 🌱 Ligera
+
+🥗 Wraps:
+• Hojas de lechuga
+• Arroz o legumbres
+• Verduras
+
+🧂 Aliño:
+• Yogur + limón
+
+🔥 Versión salteada:
+1. Saltea 1 min
+2. Añade ajo
+
+🥤 Extra:
+• Batido verde suave
+
+💡 Consejo: no sobrecocinar.`,
+
+                "platano": `🍽️ **RECETA EXPRESS CON PLÁTANO**
+⏱️ 10 minutos | 🟢 Fácil | 🌱 Energética
+
+🥗 Bowl dulce:
+• Plátano en rodajas
+• Avena
+• Canela
+
+🧂 Toque:
+• Miel opcional
+
+🔥 Versión plancha:
+1. Dora plátano
+2. Añade canela
+
+🥤 Batido:
+• Plátano + leche vegetal
+
+💡 Consejo: usar maduro.`,
+
+                "fresa": `🍽️ **RECETA EXPRESS CON FRESAS**
+⏱️ 10 minutos | 🟢 Fácil | 🌱 Antioxidante
+
+🥗 Ensalada:
+• Fresas troceadas
+• Naranja
+• Menta
+
+🧂 Aliño:
+• Zumo de naranja
+
+🔥 Versión tibia:
+1. Saltea 1 min
+2. Sirve con yogur
+
+🥤 Batido:
+• Fresa + plátano
+
+💡 Consejo: pimienta negra realza sabor.`,
+
+                "arroz": `🍽️ **RECETA EXPRESS CON ARROZ**
+⏱️ 15 minutos | 🟢 Fácil | 🌱 Básica
+
+🥗 Bowl:
+• Arroz cocido
+• Verduras
+• Semillas
+
+🧂 Aliño:
+• Aceite + soja
+
+🔥 Salteado:
+1. Saltea arroz
+2. Añade verduras
+
+🥤 Extra:
+• Arroz con leche rápido
+
+💡 Consejo: usa arroz del día anterior.`,
+
+                "pasta": `🍽️ **RECETA EXPRESS CON PASTA**
+⏱️ 15 minutos | 🟢 Fácil | 🌱 Clásica
+
+🥗 Pasta fría:
+• Pasta cocida
+• Tomate
+• Aceite
+
+🧂 Aliño:
+• Aceite + sal
+
+🔥 Versión caliente:
+1. Ajo + aceite
+2. Añade pasta
+
+🥤 Extra:
+• Sopa ligera de pasta
+
+💡 Consejo: reserva agua de cocción.`,
+
+                "huevo": `🍽️ **RECETA EXPRESS CON HUEVO**
+⏱️ 10 minutos | 🟢 Fácil | 🍳 Proteica
+
+🥗 Acompañamiento:
+• Huevo duro
+• Ensalada verde
+
+🧂 Toque:
+• Sal y pimienta
+
+🔥 Revuelto:
+1. Bate huevo
+2. Cocina suave
+
+🥤 Extra:
+• Huevo pasado por agua
+
+💡 Consejo: fuego bajo.`,
+
+                "queso": `🍽️ **RECETA EXPRESS CON QUESO**
+⏱️ 10 minutos | 🟢 Fácil | 🧀 Saciante
+
+🥗 Ensalada:
+• Queso fresco
+• Tomate
+• Aceite
+
+🧂 Aliño:
+• Aceite + orégano
+
+🔥 Fundido:
+1. Queso en tostada
+2. Gratina
+
+🥤 Extra:
+• Queso con fruta
+
+💡 Consejo: combina con ácido.`,
+
+                "lentejas": `🍽️ **RECETA EXPRESS CON LENTEJAS**
+⏱️ 15 minutos | 🟢 Fácil | 🌱 Proteica
+
+🥗 Ensalada:
+• Lentejas cocidas
+• Cebolla
+• Perejil
+
+🧂 Aliño:
+• Aceite + vinagre
+
+🔥 Salteadas:
+1. Saltea con pimentón
+2. Sirve con arroz
+
+🥤 Extra:
+• Crema de lentejas
+
+💡 Consejo: especias suaves.`,
+
+                "brocoli": `🍽️ **RECETA EXPRESS CON BRÓCOLI**
+⏱️ 10 minutos | 🟢 Fácil | 🌱 Verde
+
+🥗 Ensalada:
+• Brócoli al vapor
+• Limón
+
+🧂 Aliño:
+• Aceite + limón
+
+🔥 Salteado:
+1. Saltea 3 min
+2. Añade ajo
+
+🥤 Extra:
+• Crema de brócoli
+
+💡 Consejo: no pasar de cocción.`,
+
+                "champinones": `🍽️ **RECETA EXPRESS CON CHAMPIÑONES**
+⏱️ 10 minutos | 🟢 Fácil | 🌱 Umami
+
+🥗 Ensalada tibia:
+• Champiñones salteados
+• Perejil
+
+🧂 Aliño:
+• Aceite + sal
+
+🔥 Sartén:
+1. Fuego fuerte
+2. Dorar bien
+
+🥤 Extra:
+• Crema ligera
+
+💡 Consejo: sartén muy caliente.`,
+
+                "berenjena": `🍽️ **RECETA EXPRESS CON BERENJENA**
+⏱️ 20 minutos | 🟢 Fácil | 🌱 Vegana
+
+🥗 Ensalada:
+• Berenjena asada
+• Limón
+
+🧂 Aliño:
+• Aceite + vinagre
+
+🔥 Plancha:
+1. Dora rodajas
+2. Añade miel
+
+🥤 Extra:
+• Baba ganoush rápido
+
+💡 Consejo: salar antes.`,
+
+                "pimiento": `🍽️ **RECETA EXPRESS CON PIMIENTO**
+⏱️ 15 minutos | 🟢 Fácil | 🌱 Colorida
+
+🥗 Ensalada:
+• Pimiento asado
+• Aceite
+
+🧂 Aliño:
+• Aceite + sal
+
+🔥 Salteado:
+1. Tiras finas
+2. Fuego alto
+
+🥤 Extra:
+• Crema de pimiento
+
+💡 Consejo: asar potencia sabor.`,
+
+                "pollo": `🍽️ **RECETA EXPRESS CON POLLO**
+⏱️ 15 minutos | 🟢 Fácil | 🍗 Proteica
+
+🥗 Ensalada:
+• Pollo cocido
+• Verde
+
+🧂 Aliño:
+• Aceite + limón
+
+🔥 Plancha:
+1. Especias básicas
+2. Dora por lados
+
+🥤 Extra:
+• Caldo rápido
+
+💡 Consejo: reposar antes de cortar.`,
+
+                "pescado": `🍽️ **RECETA EXPRESS CON PESCADO BLANCO**
+⏱️ 15 minutos | 🟢 Fácil | 🐟 Ligera
+
+🥗 Ensalada:
+• Pescado al vapor
+• Limón
+
+🧂 Aliño:
+• Aceite + sal
+
+🔥 Horno:
+1. 180 °C
+2. 12–15 min
+
+🥤 Extra:
+• Caldo de pescado
+
+💡 Consejo: no sobrecocinar.`,
+
+                "aguacate": `🍽️ **RECETA EXPRESS CON AGUACATE**
+⏱️ 10 minutos | 🟢 Fácil | 🥑 Saludable
+
+🥗 Ensalada:
+• Aguacate en cubos
+• Tomate
+
+🧂 Aliño:
+• Limón + sal
+
+🔥 Versión caliente:
+1. Dorar rápido
+2. Usar como topping
+
+🥤 Batido:
+• Aguacate + plátano
+
+💡 Consejo: limón evita oxidación.`,
+
+                "manzana": `🍽️ **RECETA EXPRESS CON MANZANA**
+⏱️ 15 minutos | 🟢 Fácil | 🌱 Saludable
+
+🥗 Ensalada fresca:
+• Manzana en cubos
+• Nueces
+• Queso opcional
+
+🧂 Aliño:
+• Aceite + vinagre
+
+🔥 Salteada:
+1. Dora manzana
+2. Añade canela
+
+🥤 Batido:
+• Manzana + plátano
+
+💡 Consejo: toque cítrico.`
+            },
+            
+            conservation: {
+                "tomate": `✅ **CONSERVACIÓN DE TOMATE**\n\n🌡️ Temperatura ideal: 10-15°C\n📦 Almacenamiento: Fuera de nevera si no está maduro\n⏱️ Duración: 5-7 días a temperatura ambiente\n💡 Consejo: Nunca refrigeres tomates verdes.`,
+                
+                "zanahoria": `✅ **CONSERVACIÓN DE ZANAHORIA**\n\n🌡️ Temperatura ideal: 0-4°C\n📦 Almacenamiento: En nevera, en bolsa perforada\n⏱️ Duración: 2-3 semanas\n💡 Consejo: Corta las hojas antes de guardar.`,
+                
+                "patata": `✅ **CONSERVACIÓN DE PATATA**\n\n🌡️ Temperatura ideal: 7-10°C\n📦 Almacenamiento: Lugar oscuro y ventilado\n⏱️ Duración: 1-2 meses\n💡 Consejo: Nunca guardes en nevera (el frío convierte almidón en azúcar).`,
+                
+                "cebolla": `✅ **CONSERVACIÓN DE CEBOLLA**\n\n🌡️ Temperatura ideal: 4-10°C\n📦 Almacenamiento: Lugar fresco, oscuro y seco\n⏱️ Duración: 1-2 meses\n💡 Consejo: No guardes cerca de patatas.`,
+                
+                "pepino": `✅ **CONSERVACIÓN DE PEPINO**\n\n🌡️ Temperatura ideal: 10-13°C\n📦 Almacenamiento: En nevera, sin lavar\n⏱️ Duración: 1 semana\n💡 Consejo: Envuelve en papel para absorber humedad.`,
+                
+                "lechuga": `✅ **CONSERVACIÓN DE LECHUGA**\n\n🌡️ Temperatura ideal: 0-2°C\n📦 Almacenamiento: En nevera, en recipiente ventilado\n⏱️ Duración: 5-7 días\n💡 Consejo: Seca bien las hojas antes de guardar.`,
+                
+                "platano": `✅ **CONSERVACIÓN DE PLÁTANO**\n\n🌡️ Temperatura ideal: 13-15°C\n📦 Almacenamiento: Colgado, no en bolsa\n⏱️ Duración: 3-5 días\n💡 Consejo: Separa del racimo para madurar más lento.`,
+                
+                "fresa": `✅ **CONSERVACIÓN DE FRESAS**\n\n🌡️ Temperatura ideal: 0-2°C\n📦 Almacenamiento: En nevera, sin lavar\n⏱️ Duración: 3-5 días\n💡 Consejo: No quites el tallo hasta el momento de usar.`,
+                
+                "aguacate": `✅ **CONSERVACIÓN DE AGUACATE**\n\n🌡️ Temperatura ideal: 4-8°C si maduro\n📦 Almacenamiento: Nevera si maduro, exterior si verde\n⏱️ Duración: 3-5 días maduro\n💡 Consejo: Guarda con cebolla para acelerar maduración.`,
+                
+                "manzana": `✅ **CONSERVACIÓN DE MANZANA**\n\n🌡️ Temperatura ideal: 0-4°C\n📦 Almacenamiento: En nevera, separada de otras frutas\n⏱️ Duración: 1-2 meses\n💡 Consejo: Produce etileno, aísla de otros alimentos.`
+            }
+        };
+
+        // ============================================
+        // FUNCIONES DE FALLBACK MEJORADAS
+        // ============================================
+        function generateConservationFallback(food, spoiled) {
+            const foodKey = food.toLowerCase();
+            
+            if (spoiled) {
+                return `🚫 **ALERTA DE SEGURIDAD - ${food.toUpperCase()} EN MAL ESTADO**\n\n🔴 **NO CONSUMAS** si observas:\n• Moho visible\n• Olor desagradable\n• Textura viscosa o blanda\n• Decoloración severa\n\n💡 **Acciones inmediatas:**\n1. Aísla para evitar contaminación cruzada\n2. Limpia la zona con agua y jabón\n3. Desecha en bolsa sellada\n4. Ventila el área\n\n✅ **Prevención futura:**\n• Refrigera a temperatura adecuada\n• Usa contenedores ventilados\n• Revisa cada 2-3 días\n• No laves hasta el momento de usar`;
+            } else {
+                // Buscar consejo específico en la base de datos
+                if (fallbackDatabase.conservation && fallbackDatabase.conservation[foodKey]) {
+                    return fallbackDatabase.conservation[foodKey];
+                } else {
+                    // Fallback genérico mejorado
+                    return `✅ **CONSERVACIÓN ÓPTIMA PARA ${food.toUpperCase()}**\n\n🌡️ **Condiciones ideales:**\n• Temperatura: 4-8°C (nevera)\n• Humedad: 85-95%\n• Ventilación: Buena circulación de aire\n\n📦 **Embalaje recomendado:**\n• Bolsa de papel con pequeños agujeros\n• Recipiente de vidrio con tapa no hermética\n• Nunca en bolsa plástica cerrada\n\n⏱️ **Duración estimada:**\n• Fresco: 5-7 días\n• Cortado: 2-3 días máximo\n• Congelado: 3-6 meses\n\n🚫 **Errores comunes a evitar:**\n1. Lavar antes de guardar\n2. Almacenar cerca de productores de etileno\n3. Cambios bruscos de temperatura\n4. Amontonar sin espacio`;
+                }
+            }
+        }
+
+        function generateRecipeFallback(food, spoiled) {
+            if (spoiled) {
+                return `⛔ **NO USES ${food.toUpperCase()} EN MAL ESTADO**\n\n🍳 **Riesgos de seguridad alimentaria:**\n• **Micotoxinas** - No se destruyen con calor\n• **Bacterias patógenas** - Salmonella, E. coli, Listeria\n• **Esporas de moho** - Pueden causar alergias\n\n💡 **Alternativas seguras:**\n1. **Sustituye** por ${food} fresco\n2. **Usa vegetales similares** disponibles\n3. **Opta por congelados** de buena calidad\n4. **Prueba legumbres enlatadas** como alternativa\n\n⚠️ **Recordatorio importante:**\nLas toxinas de alimentos en mal estado NO se eliminan cocinando.`;
+            } else {
+                const foodKey = food.toLowerCase();
+                // Buscar receta específica en la base de datos
+                if (fallbackDatabase.recipes && fallbackDatabase.recipes[foodKey]) {
+                    return fallbackDatabase.recipes[foodKey];
+                } else {
+                    // Fallback genérico para alimentos no en la lista
+                    return `🍽️ **RECETA EXPRESS CON ${food.toUpperCase()}**\n\n⏱️ 15 minutos | 🟢 Fácil | 🌱 Saludable\n\n🥗 **Ensalada simple:**\n• Corta ${food} en cubos o rodajas\n• Añade verduras frescas (pepino, tomate)\n• Aliña con aceite de oliva y limón\n• Espolvorea hierbas frescas\n\n🔥 **Versión salteada:**\n1. Calienta aceite en sartén\n2. Saltea ${food} con ajo picado\n3. Añade especias al gusto\n4. Sirve con cereal integral\n\n🥤 **Batido energético:**\n• 1 ${food} pelado y cortado\n• 1 plátano congelado\n• 200ml leche vegetal\n• 1 cucharada de semillas\n• Licuar hasta homogeneizar\n\n💡 **Consejo del chef:**\nAñade un toque ácido (limón, vinagre) para realzar los sabores naturales.`;
+                }
+            }
+        }
+
+        // ============================================
+        // RESTO DEL CÓDIGO (MANTENIDO)
+        // ============================================
+        
         // Elementos DOM
         const fileInput = document.getElementById('fileInput');
         const previewImage = document.getElementById('previewImage');
@@ -356,10 +852,10 @@
         const urlInput = document.getElementById('urlInput');
         const imageUrl = document.getElementById('imageUrl');
         
-        // ============================================
-        // 1. MANEJO DE IMÁGENES
-        // ============================================
-        
+        // [MANTENGO TODAS LAS FUNCIONES EXISTENTES DESDE AQUÍ...]
+        // initCamera, analyzeSpoilage, processImage, callAPI, formatResponse, etc.
+        // Solo cambian las funciones de fallback que ya actualicé arriba
+
         // Cambiar modo de entrada
         document.querySelectorAll('.mode-card').forEach(card => {
             card.addEventListener('click', function() {
@@ -492,10 +988,7 @@
             }
         }
         
-        // ============================================
-        // 2. PROCESAMIENTO DE IMAGEN Y ANÁLISIS
-        // ============================================
-        
+        // Procesar imagen
         function processImage(imgElement) {
             loading.style.display = 'flex';
             spoilAnalysis.style.display = 'none';
@@ -503,15 +996,12 @@
             actionControls.style.display = 'none';
             resultCard.style.display = 'none';
             
-            // Simular procesamiento (en producción aquí iría IA real)
             setTimeout(() => {
-                // Análisis simulado basado en características de la imagen
                 analyzeImageWithCanvas(imgElement);
                 
                 loading.style.display = 'none';
                 foodSelection.style.display = 'block';
                 
-                // Hacer scroll suave
                 foodSelection.scrollIntoView({ behavior: 'smooth' });
             }, 1500);
         }
@@ -520,7 +1010,6 @@
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
             
-            // Redimensionar para procesamiento más rápido
             const maxWidth = 300;
             const scale = maxWidth / imgElement.width;
             canvas.width = maxWidth;
@@ -531,10 +1020,10 @@
             const data = imageData.data;
             
             let totalPixels = data.length / 4;
-            let darkPixels = 0;      // Oscuridad (podredumbre)
-            let brownPixels = 0;     // Marrón (madurez excesiva)
-            let greenPixels = 0;     // Verde moho
-            let brightPixels = 0;    // Brillante (fresco)
+            let darkPixels = 0;
+            let brownPixels = 0;
+            let greenPixels = 0;
+            let brightPixels = 0;
             
             for (let i = 0; i < data.length; i += 4) {
                 const r = data[i];
@@ -542,40 +1031,20 @@
                 const b = data[i + 2];
                 const brightness = (r + g + b) / 3;
                 
-                // Detectar oscuridad (podredumbre)
-                if (brightness < 50) {
-                    darkPixels++;
-                }
-                
-                // Detectar colores marrones (madurez excesiva)
-                if (r > 100 && g > 50 && b < 100 && Math.abs(r - g) < 60) {
-                    brownPixels++;
-                }
-                
-                // Detectar verde moho
-                if (g > r + 30 && g > b + 30 && g > 100) {
-                    greenPixels++;
-                }
-                
-                // Detectar colores brillantes/vivos (fresco)
-                if (brightness > 180 && Math.abs(r - g) < 50 && Math.abs(g - b) < 50) {
-                    brightPixels++;
-                }
+                if (brightness < 50) darkPixels++;
+                if (r > 100 && g > 50 && b < 100 && Math.abs(r - g) < 60) brownPixels++;
+                if (g > r + 30 && g > b + 30 && g > 100) greenPixels++;
+                if (brightness > 180 && Math.abs(r - g) < 50 && Math.abs(g - b) < 50) brightPixels++;
             }
             
-            // Calcular porcentajes
             const darkPercent = Math.min(100, Math.round((darkPixels / totalPixels) * 200));
             const brownPercent = Math.min(100, Math.round((brownPixels / totalPixels) * 150));
             const greenPercent = Math.min(100, Math.round((greenPixels / totalPixels) * 300));
             const brightPercent = Math.min(100, Math.round((brightPixels / totalPixels) * 100));
             
-            // Calcular frescura general
             const freshness = Math.max(0, 100 - (darkPercent * 0.4 + brownPercent * 0.3 + greenPercent * 0.3));
-            
-            // Determinar si está en mal estado
             isSpoiled = freshness < 70 || greenPercent > 15 || darkPercent > 25;
             
-            // Guardar resultados
             analysisResults = {
                 freshness: Math.round(freshness),
                 moldRisk: Math.round(greenPercent),
@@ -585,18 +1054,15 @@
                 brightAreas: Math.round(brightPercent)
             };
             
-            // Actualizar UI
             updateAnalysisUI();
         }
         
         function updateAnalysisUI() {
-            // Actualizar barras de progreso
             animateProgress('freshnessBar', 'freshnessText', analysisResults.freshness);
             animateProgress('moldBar', 'moldText', analysisResults.moldRisk);
             animateProgress('ripeBar', 'ripeText', analysisResults.overripe);
             animateProgress('discolorBar', 'discolorText', analysisResults.discoloration);
             
-            // Actualizar resumen
             const summary = document.getElementById('stateSummary');
             const badge = document.getElementById('stateBadge');
             
@@ -614,7 +1080,6 @@
                 badge.style.background = '#FF3B30';
             }
             
-            // Mostrar sección de análisis
             spoilAnalysis.style.display = 'block';
         }
         
@@ -623,7 +1088,7 @@
             const text = document.getElementById(textId);
             
             let current = 0;
-            const increment = value / 50; // 50 pasos para la animación
+            const increment = value / 50;
             
             const interval = setInterval(() => {
                 current += increment;
@@ -637,10 +1102,7 @@
             }, 20);
         }
         
-        // ============================================
-        // 3. SELECCIÓN DE ALIMENTO
-        // ============================================
-        
+        // Selección de alimento
         document.querySelectorAll('.food-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 currentFood = this.dataset.food;
@@ -661,10 +1123,7 @@
             actionControls.scrollIntoView({ behavior: 'smooth' });
         }
         
-        // ============================================
-        // 4. LLAMADA A LA API
-        // ============================================
-        
+        // Llamada a la API
         document.getElementById('conservationBtn').addEventListener('click', () => callAPI('conservation'));
         document.getElementById('recipeBtn').addEventListener('click', () => callAPI('recipe'));
         document.getElementById('rescanBtn').addEventListener('click', resetApp);
@@ -687,7 +1146,7 @@
                         food: currentFood,
                         option: option,
                         isSpoiled: analysisResults.isSpoiled,
-                        analysis: analysisResults // Enviamos datos de análisis
+                        analysis: analysisResults
                     })
                 });
                 
@@ -695,29 +1154,50 @@
                 
                 const data = await response.json();
                 
+                // Validar respuesta
+                let responseText = '';
+                let source = 'fallback';
+                
+                if (data && data.response && typeof data.response === 'string') {
+                    responseText = data.response;
+                    source = data.source || 'api';
+                } else {
+                    responseText = option === 'conservation'
+                        ? generateConservationFallback(currentFood, analysisResults.isSpoiled)
+                        : generateRecipeFallback(currentFood, analysisResults.isSpoiled);
+                }
+                
                 // Configurar título
                 if (option === 'conservation') {
                     resultTitle.textContent = analysisResults.isSpoiled 
-                        ? `⚠️ Conservación de ${currentFood} (en mal estado)`
+                        ? `⚠️ Conservación de ${currentFood}`
                         : `✅ Conservación de ${currentFood}`;
-                    resultSubtitle.textContent = analysisResults.isSpoiled 
-                        ? 'Consejos de seguridad alimentaria' 
-                        : 'Mantén tu alimento fresco por más tiempo';
+                    resultSubtitle.textContent = source === 'api' 
+                        ? 'Recomendaciones por IA' 
+                        : 'Recomendaciones de seguridad';
                 } else {
                     resultTitle.textContent = analysisResults.isSpoiled
-                        ? `🚫 ${currentFood} en mal estado - Alternativas seguras`
+                        ? `🚫 ${currentFood} - Precaución`
                         : `🍳 Receta con ${currentFood}`;
-                    resultSubtitle.textContent = analysisResults.isSpoiled
-                        ? 'No uses alimentos en mal estado para cocinar'
-                        : 'Receta creativa y deliciosa';
+                    resultSubtitle.textContent = source === 'api'
+                        ? 'Receta generada por IA'
+                        : 'Receta de respaldo';
+                }
+                
+                // Añadir badge de fuente
+                if (source === 'api') {
+                    resultTitle.innerHTML += ' <span style="background:#10B981;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">IA</span>';
+                } else {
+                    resultTitle.innerHTML += ' <span style="background:#6B7280;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">Modo Seguro</span>';
                 }
                 
                 // Formatear respuesta
-                resultContent.innerHTML = formatResponse(data.response);
+                resultContent.innerHTML = formatResponse(responseText);
                 
             } catch (error) {
                 console.error('Error API:', error);
-                // Fallback local detallado
+                
+                // Fallback local
                 resultTitle.textContent = option === 'conservation' 
                     ? `Guía de Conservación: ${currentFood}`
                     : `Receta con ${currentFood}`;
@@ -732,148 +1212,44 @@
             } finally {
                 loading.style.display = 'none';
                 resultCard.style.display = 'block';
-                resultCard.scrollIntoView({ behavior: 'smooth' });
+                setTimeout(() => {
+                    resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
             }
         }
         
         function formatResponse(text) {
-            return text
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\n\n/g, '</p><p>')
-                .replace(/\n/g, '<br>')
-                .replace(/✅/g, '<span style="color:#34C759;">✅</span>')
-                .replace(/⚠️/g, '<span style="color:#FF9500;">⚠️</span>')
-                .replace(/🚫/g, '<span style="color:#FF3B30;">🚫</span>')
-                .replace(/🔴/g, '<span style="color:#FF3B30;">🔴</span>')
-                .replace(/🟡/g, '<span style="color:#FF9500;">🟡</span>')
-                .replace(/💡/g, '<span style="color:#007AFF;">💡</span>');
-        }
-        
-        function generateConservationFallback(food, spoiled) {
-            if (spoiled) {
-                return `🚫 **ALERTA DE SEGURIDAD - ${food.toUpperCase()} EN MAL ESTADO**
-
-🔴 **NO CONSUMAS** si observas:
-• Moho visible (puntos verdes, blancos o negros)
-• Olor agrio, fermentado o desagradable
-• Textura babosa, viscosa o excesivamente blanda
-• Zonas oscuras, hundidas o con líquido
-
-🟡 **¿Qué hacer ahora?**
-1. **Aísla** el alimento para evitar contaminar otros
-2. **Limpia** el área donde estaba almacenado con agua y jabón
-3. **Desecha** correctamente en una bolsa sellada
-4. **Revisa** otros alimentos cercanos
-
-✅ **Prevención para el futuro:**
-• Almacena a 4°C en refrigerador
-• Usa contenedores ventilados
-• Consume dentro de 2-3 días tras compra
-• No laves hasta el momento de usar
-
-💡 **Regla de oro:** "Cuando hay duda, mejor desechar"`;
-            } else {
-                return `✅ **GUÍA DE CONSERVACIÓN ÓPTIMA - ${food.toUpperCase()}**
-
-🌡️ **Condiciones ideales:**
-• Temperatura: 4-8°C (cajón de verduras)
-• Humedad: 85-95% para mayoría de vegetales
-• Ventilación: Aire circulante, nunca hermético
-
-📦 **Embalaje recomendado:**
-• Bolsas de papel con pequeños agujeros
-• Envases de vidrio con tapa no hermética
-• Evita bolsas plásticas cerradas
-
-⏱️ **Duración aproximada:**
-• Entero: 5-7 días en refrigerador
-• Cortado: 2-3 días máximo
-• Congelado: 3-6 meses (blanqueado primero)
-
-🚫 **Errores comunes a evitar:**
-1. Lavar antes de guardar (crea humedad y moho)
-2. Almacenar cerca de frutas productoras de etileno
-3. Exponer a cambios bruscos de temperatura
-4. Amontonar sin espacio entre ellos
-
-🔄 **Mantenimiento:**
-• Revisa cada 2 días
-• Retira piezas dañadas inmediatamente
-• Gira y ventila periódicamente`;
+            if (typeof text !== 'string') {
+                console.warn('formatResponse recibió no-string:', typeof text, text);
+                if (text === null || text === undefined) {
+                    text = 'No se pudo obtener una respuesta. Por favor, intenta de nuevo.';
+                } else {
+                    text = String(text);
+                }
+            }
+            
+            if (!text || text.trim().length === 0) {
+                text = 'La respuesta está vacía. Usando recomendaciones de seguridad estándar.';
+            }
+            
+            try {
+                return text
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n\n/g, '</p><p>')
+                    .replace(/\n/g, '<br>')
+                    .replace(/✅/g, '<span style="color:#34C759;">✅</span>')
+                    .replace(/⚠️/g, '<span style="color:#FF9500;">⚠️</span>')
+                    .replace(/🚫/g, '<span style="color:#FF3B30;">🚫</span>')
+                    .replace(/🔴/g, '<span style="color:#FF3B30;">🔴</span>')
+                    .replace(/🟡/g, '<span style="color:#FF9500;">🟡</span>')
+                    .replace(/💡/g, '<span style="color:#007AFF;">💡</span>');
+            } catch (error) {
+                console.error('Error formateando respuesta:', error);
+                return `<p style="color:#FF3B30;">Error formateando respuesta. Aquí está el texto original:</p><p>${text}</p>`;
             }
         }
-        
-        function generateRecipeFallback(food, spoiled) {
-            if (spoiled) {
-                return `⛔ **NO USES ${food.toUpperCase()} EN MAL ESTADO PARA COCINAR**
-
-🍳 **Riesgos de seguridad alimentaria:**
-• **Micotoxinas** - No se destruyen con el calor
-• **Bacterias patógenas** - Pueden causar intoxicación
-• **Esporas de moho** - Invisibles pero peligrosas
-
-💡 **Alternativas seguras:**
-1. **Sustituye** por ${food} fresco
-2. **Usa vegetales similares** disponibles
-3. **Opta por congelados** de buena calidad
-4. **Prueba legumbres enlatadas** como alternativa
-
-⚠️ **Síntomas de intoxicación:**
-• Náuseas, vómitos, diarrea (1-48 horas después)
-• Calambres abdominales
-• Fiebre, dolor de cabeza
-
-🏥 **Busca ayuda médica si:**
-• Los síntomas duran más de 2 días
-• Hay fiebre alta (>38.5°C)
-• Signos de deshidratación
-
-💚 **Mejor prevenir:** Compra cantidades pequeñas y consume rápido.`;
-            } else {
-                return `🍽️ **RECETA EXPRESS CON ${food.toUpperCase()}**
-
-⏱️ **15 minutos** | 🟢 **Fácil** | 🌱 **Saludable**
-
-🥗 **Ensalada Fresca:**
-• 2 ${food} medianos cortados en cubos
-• 1 pepino en rodajas finas
-• 1/2 cebolla morada en pluma
-• 50g de nueces tostadas
-• Queso feta desmenuzado (opcional)
-
-🧂 **Aliño mágico:**
-• 3 cdas aceite de oliva virgen extra
-• 1 cda vinagre de manzana
-• 1 cdta miel o sirope de agave
-• Sal, pimienta negra, orégano al gusto
-• Mezclar y verter sobre la ensalada
-
-🔥 **Versión salteada (sartén):**
-1. Calienta 1 cda de aceite en sartén
-2. Saltea ${food} en cubos por 3-4 minutos
-3. Añade ajo picado y chile (opcional)
-4. Cocina 2 minutos más hasta dorar
-5. Sirve sobre arroz integral o quinoa
-6. Espolvorea perejil fresco
-
-🥤 **Batido energético:**
-• 1 ${food} pelado y cortado
-• 1 plátano congelado
-• 200ml leche de almendras
-• 1 cda de avena integral
-• Canela y nuez moscada al gusto
-• Licuar hasta obtener textura suave
-
-💡 **Consejo del chef:** Añade un toque cítrico (lima o limón) para realzar el sabor natural del ${food}.`;
-            }
-        }
-        
-        // ============================================
-        // 5. FUNCIONES AUXILIARES
-        // ============================================
         
         function resetApp() {
-            // Resetear todo
             previewImage.style.display = 'none';
             uploadPlaceholder.style.display = 'flex';
             spoilAnalysis.style.display = 'none';
@@ -884,13 +1260,11 @@
             fileInput.value = '';
             imageUrl.value = '';
             
-            // Resetear análisis
             document.getElementById('freshnessBar').style.width = '0%';
             document.getElementById('moldBar').style.width = '0%';
             document.getElementById('ripeBar').style.width = '0%';
             document.getElementById('discolorBar').style.width = '0%';
             
-            // Scroll al inicio
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         
