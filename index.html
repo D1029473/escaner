@@ -2,1009 +2,267 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Save & Taste | Escáner Inteligente de Alimentos</title>
-    <meta name="mobile-web-app-capable" content="yes">
-    
-    <!-- Solo Teachable Machine, NO TensorFlow (ya viene incluido) -->
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FreshScan AI · Conservación Inteligente</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* =============== VARIABLES Y ESTILOS BASE =============== */
-        :root { 
-            --primary: #007AFF; 
-            --primary-dark: #0051D5;
-            --success: #34C759;
-            --warning: #FF9500;
-            --danger: #FF3B30;
-            --dark: #1D1D1F; 
-            --light: #F5F5F7; 
-            --white: #FFFFFF;
-            --card-shadow: 0 2px 16px rgba(0,0,0,0.12);
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        :root {
+            --primary: #007AFF; --success: #34C759; --warning: #FF9500; --danger: #FF3B30;
+            --background: #F5F5F7; --card: #FFFFFF; --text: #1D1D1F; --text-secondary: #86868B;
+            --border: #E5E5EA; --radius: 18px; --shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
         }
+        body { background: var(--background); color: var(--text); min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
         
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
-            -webkit-tap-highlight-color: transparent;
-        }
+        /* Header */
+        header { text-align: center; padding: 20px 0; }
+        .logo { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px; }
+        .logo i { font-size: 32px; color: var(--primary); }
+        .logo h1 { font-size: 28px; font-weight: 700; background: linear-gradient(135deg, var(--primary), #00C6FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
-            margin: 0; 
-            background: var(--light);
-            color: var(--dark); 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center;
-            min-height: 100vh;
-            padding: env(safe-area-inset-top) env(safe-area-inset-right) 
-                     env(safe-area-inset-bottom) env(safe-area-inset-left);
-        }
+        /* Scanner */
+        .scanner-card { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+        .camera-container { position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 16px; overflow: hidden; background: #000; }
+        #cameraFeed { width: 100%; height: 100%; object-fit: cover; }
+        .scan-box { width: 70%; height: 70%; border: 3px solid var(--primary); border-radius: 16px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); }
         
-        /* =============== HEADER =============== */
-        .header { 
-            width: 100%; 
-            background: var(--white); 
-            padding: 16px 0; 
-            text-align: center; 
-            box-shadow: 0 1px 0 rgba(0,0,0,0.08);
-            position: sticky; 
-            top: 0; 
-            z-index: 100;
-        }
+        /* Controles */
+        .controls { display: flex; gap: 16px; margin-top: 20px; }
+        .btn { flex: 1; padding: 16px; border-radius: 14px; border: none; font-size: 17px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s ease; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #0056CC; transform: translateY(-2px); }
+        .btn-secondary { background: rgba(0, 122, 255, 0.1); color: var(--primary); }
         
-        .header h1 { 
-            margin: 0; 
-            font-size: clamp(1.1rem, 3vw, 1.3rem);
-            letter-spacing: -0.5px; 
-            color: var(--dark); 
-            font-weight: 600;
-        }
+        /* Análisis de deterioro */
+        .spoil-analysis { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+        .confidence-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin: 16px 0; }
+        .confidence-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+        .spoilage-details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; }
+        .detail-card { background: var(--background); padding: 16px; border-radius: 12px; text-align: center; }
         
-        /* =============== VISOR DE CÁMARA =============== */
-        #vision-container { 
-            width: 100%; 
-            max-width: 600px; 
-            aspect-ratio: 4/3;
-            background: #000; 
-            position: relative; 
-            overflow: hidden; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center;
-            border-radius: 0;
-        }
+        /* Alertas */
+        .alert { background: rgba(255, 149, 0, 0.1); border: 1px solid rgba(255, 149, 0, 0.3); border-radius: 14px; padding: 20px; margin-top: 20px; }
         
-        #webcam-viewer, #image-preview { 
-            width: 100%;
-            height: 100%; 
-            object-fit: cover; 
-        }
+        /* Resultados */
+        .result-card { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); display: none; }
+        .loading { display: none; flex-direction: column; align-items: center; gap: 20px; padding: 40px 0; }
+        .spinner { width: 48px; height: 48px; border: 4px solid rgba(0, 122, 255, 0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
         
-        .scanner-line { 
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 2px; 
-            background: var(--success);
-            box-shadow: 0 0 10px var(--success);
-            animation: scan 2.5s infinite ease-in-out; 
-            z-index: 5; 
-            opacity: 0.8;
-        }
-        
-        @keyframes scan { 
-            0%, 100% { top: 0%; } 
-            50% { top: 100%; } 
-        }
-        
-        /* =============== CONTENIDO PRINCIPAL =============== */
-        .main-content {
-            width: 100%;
-            max-width: 600px;
-            padding: 20px;
-        }
-        
-        .info-card { 
-            background: var(--white); 
-            border-radius: 20px; 
-            padding: clamp(20px, 5vw, 32px);
-            box-shadow: var(--card-shadow);
-            margin-bottom: 16px;
-        }
-        
-        #food-name { 
-            font-size: clamp(1.5rem, 5vw, 2rem);
-            font-weight: 600; 
-            color: var(--dark); 
-            margin-bottom: 20px; 
-            display: block;
-            letter-spacing: -0.5px;
-        }
-        
-        .button-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 12px;
-        }
-        
-        .btn { 
-            border: none; 
-            padding: clamp(14px, 3vw, 16px);
-            border-radius: 12px; 
-            font-weight: 600; 
-            font-size: clamp(0.9rem, 2.5vw, 1rem);
-            cursor: pointer; 
-            transition: all 0.2s ease;
-            width: 100%;
-            font-family: inherit;
-        }
-        
-        .btn:active {
-            transform: scale(0.97);
-        }
-        
-        .btn-conservation { 
-            background: var(--primary); 
-            color: white;
-            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
-        }
-        
-        .btn-conservation:hover {
-            background: var(--primary-dark);
-        }
-        
-        .btn-recipe { 
-            background: var(--success); 
-            color: white;
-            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3);
-        }
-        
-        .btn-recipe:hover {
-            background: #28A745;
-        }
-        
-        .btn:disabled { 
-            background: #E5E5E7;
-            color: #86868B;
-            box-shadow: none;
-            cursor: not-allowed;
-        }
-        
-        .btn-upload {
-            background: var(--light);
-            color: var(--dark);
-            border: 1px solid #D2D2D7;
-        }
-        
-        .btn-upload:hover {
-            background: #E8E8ED;
-        }
-        
-        #ai-response { 
-            margin-top: 20px; 
-            text-align: left; 
-            background: var(--light);
-            padding: clamp(16px, 4vw, 20px);
-            border-radius: 16px; 
-            display: none;
-            line-height: 1.6;
-            font-size: clamp(0.9rem, 2.5vw, 1rem);
-        }
-        
-        #ai-response b {
-            display: block;
-            margin-bottom: 12px;
-            font-size: clamp(1rem, 2.8vw, 1.1rem);
-        }
-        
-        #ai-text {
-            color: #1D1D1F;
-        }
-        
-        .loader { 
-            width: 18px; 
-            height: 18px; 
-            border: 2px solid rgba(255,255,255,0.3); 
-            border-radius: 50%; 
-            border-top-color: #fff; 
-            animation: spin 0.8s linear infinite; 
-            display: inline-block;
-        }
-        
-        @keyframes spin { 
-            to { transform: rotate(360deg); } 
-        }
-        
-        /* =============== ANÁLISIS DE DETERIORO (ESTILOS NUEVOS) =============== */
-        .analysis-container {
-            margin-top: 15px;
-        }
-        
-        .spoilage-warning, .spoilage-confirmed, .spoilage-ok, .spoilage-dismissed {
-            padding: 15px;
-            border-radius: 10px;
-            margin: 10px 0;
-            color: white;
-        }
-        
-        .spoilage-warning {
-            background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
-            border: 2px solid #ff3b30;
-        }
-        
-        .spoilage-confirmed {
-            background: linear-gradient(135deg, #ff3b30, #ff6b6b);
-            border: 2px solid #ff0000;
-        }
-        
-        .spoilage-ok {
-            background: linear-gradient(135deg, #34c759, #30d158);
-            border: 2px solid #30b453;
-        }
-        
-        .spoilage-dismissed {
-            background: linear-gradient(135deg, #ff9500, #ffaa00);
-            border: 2px solid #ff8a00;
-        }
-        
-        .warning-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .btn-warning, .btn-secondary {
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: opacity 0.2s;
-        }
-        
-        .btn-warning:hover, .btn-secondary:hover {
-            opacity: 0.9;
-        }
-        
-        .btn-warning {
-            background: #ff3b30;
-            color: white;
-        }
-        
-        .btn-secondary {
-            background: #8e8e93;
-            color: white;
-        }
-        
-        /* Indicadores de estado */
-        .status-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            margin-left: 10px;
-        }
-        
-        .status-good {
-            background: rgba(52, 199, 89, 0.15);
-            color: #34C759;
-            border: 1px solid rgba(52, 199, 89, 0.3);
-        }
-        
-        .status-warning {
-            background: rgba(255, 149, 0, 0.15);
-            color: #FF9500;
-            border: 1px solid rgba(255, 149, 0, 0.3);
-            animation: pulse 2s infinite;
-        }
-        
-        .status-danger {
-            background: rgba(255, 59, 48, 0.15);
-            color: #FF3B30;
-            border: 1px solid rgba(255, 59, 48, 0.3);
-            animation: pulse 1s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        
-        /* Mejoras visuales */
-        .detection-details {
-            background: rgba(0, 0, 0, 0.03);
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 10px;
-            font-size: 0.9rem;
-        }
-        
-        .detection-details p {
-            margin: 5px 0;
-            display: flex;
-            justify-content: space-between;
-        }
-        
-        .detection-details .label {
-            color: #666;
-            font-weight: 500;
-        }
-        
-        .detection-details .value {
-            color: #1D1D1F;
-            font-weight: 600;
-        }
-        
-        /* =============== RESPONSIVE =============== */
-        @media (max-width: 480px) {
-            .button-group {
-                grid-template-columns: 1fr;
-            }
-            
-            .warning-actions {
-                flex-direction: column;
-            }
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container { gap: 16px; }
+            .controls { flex-direction: column; }
+            .spoilage-details { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <div class="header"><h1>SAVE AND TASTE</h1></div>
-    
-    <!-- Visor de cámara/scanner -->
-    <div id="vision-container">
-        <div class="scanner-line"></div>
-        <div id="webcam-viewer"></div>
-        <img id="image-preview" src="#" style="display:none;">
-    </div>
-    
-    <!-- Contenido principal -->
-    <div class="main-content">
-        <div class="info-card">
-            <span id="food-name">Iniciando...</span>
-            
-            <!-- Resultados de detección (inicialmente oculto) -->
-            <div id="detection-results" style="display: none;">
-                <div class="detection-details">
-                    <p>
-                        <span class="label">Confianza:</span>
-                        <span class="value" id="confidence-value">0%</span>
-                    </p>
-                    <div style="height: 6px; background: #E5E5E7; border-radius: 3px; margin: 8px 0;">
-                        <div id="confidence-bar" style="height: 100%; width: 0%; background: var(--success); border-radius: 3px; transition: width 0.5s;"></div>
-                    </div>
+    <div class="container">
+        <header>
+            <div class="logo"><i class="fas fa-leaf"></i><h1>FreshScan AI</h1></div>
+            <p class="tagline">Conservación inteligente con análisis de deterioro por IA</p>
+        </header>
+
+        <section class="scanner-card">
+            <div class="card-header">
+                <h2>Escáner de Alimentos</h2>
+                <div class="badge fresh" id="statusBadge">
+                    <i class="fas fa-check-circle"></i><span>Fresco</span>
                 </div>
-                
-                <!-- Aquí se mostrará el análisis de deterioro -->
-                <div id="spoilage-analysis" class="analysis-container"></div>
             </div>
-            
-            <!-- Botones de acción -->
-            <div class="button-group">
-                <button class="btn btn-conservation" id="btn-conservation" disabled>
-                    Conservar
+            <div class="camera-container">
+                <video id="cameraFeed" autoplay playsinline></video>
+                <canvas id="canvas"></canvas>
+                <div class="camera-overlay"><div class="scan-box"></div></div>
+            </div>
+            <div class="controls">
+                <button class="btn btn-primary" id="captureBtn">
+                    <i class="fas fa-camera"></i>Analizar Conservación
                 </button>
-                <button class="btn btn-recipe" id="btn-recipe" disabled>
-                    Recetas
+                <button class="btn btn-secondary" id="recipeBtn">
+                    <i class="fas fa-utensils"></i>Generar Receta
                 </button>
             </div>
-            
-            <!-- Subir foto -->
-            <button class="btn btn-upload" id="btn-upload">
-                📷 Subir foto
-            </button>
-            <input type="file" id="file-input" style="display:none" accept="image/*">
-            
-            <!-- Respuesta de IA -->
-            <div id="ai-response">
-                <b id="response-title">Consejos de conservación:</b>
-                <div id="ai-text"></div>
+        </section>
+
+        <section class="spoil-analysis" id="spoilAnalysis" style="display: none;">
+            <div class="spoil-header">
+                <h3>Análisis de Deterioro</h3>
+                <span class="confidence-text" id="confidenceText">Confianza: 0%</span>
             </div>
+            <div class="confidence-bar">
+                <div class="confidence-fill" id="confidenceFill" style="width: 0%;"></div>
+            </div>
+            <div class="spoilage-details">
+                <div class="detail-card"><div class="detail-value" id="moldValue">0%</div><div class="detail-label">Moho</div></div>
+                <div class="detail-card"><div class="detail-value" id="darkValue">0%</div><div class="detail-label">Zonas oscuras</div></div>
+                <div class="detail-card"><div class="detail-value" id="freshValue">100%</div><div class="detail-label">Frescura</div></div>
+            </div>
+        </section>
+
+        <div class="alert" id="alert" style="display: none;">
+            <div class="alert-header">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Posible deterioro detectado</h3>
+            </div>
+            <p>El análisis detectó signos de deterioro. ¿Continuar o descartar?</p>
+            <div class="alert-buttons">
+                <button class="alert-btn alert-confirm" id="proceedBtn">Continuar (con precaución)</button>
+                <button class="alert-btn alert-dismiss" id="dismissBtn">Descartar</button>
+            </div>
+        </div>
+
+        <section class="result-card" id="resultCard">
+            <div class="result-header">
+                <div class="result-icon"><i class="fas fa-robot"></i></div>
+                <div>
+                    <h2 id="resultTitle">Consejos de Conservación</h2>
+                    <p id="resultSubtitle">Recomendaciones por IA</p>
+                </div>
+            </div>
+            <div class="result-content" id="resultContent"></div>
+        </section>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analizando con IA...</p>
         </div>
     </div>
 
-    <!-- =============== JAVASCRIPT COMPLETO =============== -->
     <script>
-        // =============== CONFIGURACIÓN ===============
-        const CONFIG = {
-            MODEL_URL: "https://teachablemachine.withgoogle.com/models/_UsIOfbEQ/",
-            MIN_CONFIDENCE: 0.65,
-            API_ENDPOINT: "/api/chat",
-            APP_VERSION: "2.2.0"
-        };
-
-        // =============== ESTADO DE LA APLICACIÓN ===============
-        let appState = {
-            model: null,
-            webcam: null,
-            currentFood: "",
-            currentConfidence: 0,
-            isProcessing: false,
-            cameraFacingMode: "environment",
-            isUsingPhoto: false,
-            isSpoiled: false,
-            spoilageData: null
-        };
-
-        // =============== ELEMENTOS DOM ===============
-        const elements = {
-            webcamViewer: document.getElementById('webcam-viewer'),
-            imagePreview: document.getElementById('image-preview'),
-            foodName: document.getElementById('food-name'),
-            detectionResults: document.getElementById('detection-results'),
-            confidenceValue: document.getElementById('confidence-value'),
-            confidenceBar: document.getElementById('confidence-bar'),
-            spoilageAnalysis: document.getElementById('spoilage-analysis'),
-            btnConservation: document.getElementById('btn-conservation'),
-            btnRecipe: document.getElementById('btn-recipe'),
-            btnUpload: document.getElementById('btn-upload'),
-            fileInput: document.getElementById('file-input'),
-            aiResponse: document.getElementById('ai-response'),
-            responseTitle: document.getElementById('response-title'),
-            aiText: document.getElementById('ai-text')
-        };
-
-        // =============== INICIALIZACIÓN ===============
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                console.log('🚀 Iniciando Save & Taste v' + CONFIG.APP_VERSION);
-                
-                // Cargar modelo de Teachable Machine
-                await loadModel();
-                
-                // Iniciar cámara
-                await initCamera();
-                
-                // Configurar eventos
-                setupEventListeners();
-                
-                elements.foodName.textContent = "Listo para escanear 🥦";
-                
-                console.log('✅ Aplicación iniciada correctamente');
-                
-            } catch (error) {
-                console.error('❌ Error inicializando:', error);
-                elements.foodName.textContent = "Error de inicialización";
-                showError('No se pudo iniciar la aplicación. Por favor, recarga la página.');
-            }
-        });
-
-        // =============== FUNCIONES PRINCIPALES ===============
+        const video = document.getElementById('cameraFeed');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('captureBtn');
+        const recipeBtn = document.getElementById('recipeBtn');
+        const resultCard = document.getElementById('resultCard');
+        const resultContent = document.getElementById('resultContent');
+        const loading = document.getElementById('loading');
+        const alert = document.getElementById('alert');
+        const statusBadge = document.getElementById('statusBadge');
         
-        // Cargar modelo de Teachable Machine
-        async function loadModel() {
-            try {
-                elements.foodName.textContent = 'Cargando modelo IA...';
-                
-                const modelURL = CONFIG.MODEL_URL + "model.json";
-                const metadataURL = CONFIG.MODEL_URL + "metadata.json";
-                
-                appState.model = await tmImage.load(modelURL, metadataURL);
-                
-                console.log('✅ Modelo Teachable Machine cargado');
-                elements.foodName.textContent = "Modelo cargado ✓";
-                
-            } catch (error) {
-                console.error('❌ Error cargando modelo:', error);
-                showError('Modelo cargado en modo limitado. Algunas funciones pueden no estar disponibles.');
-            }
-        }
+        let isSpoiled = false;
+        let currentFood = '';
+        let currentOption = 'conservation';
 
-        // Inicializar cámara
         async function initCamera() {
             try {
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    throw new Error('Cámara no disponible');
-                }
-                
-                const constraints = {
-                    video: {
-                        facingMode: appState.cameraFacingMode,
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    },
-                    audio: false
-                };
-                
-                appState.webcam = new tmImage.Webcam(640, 480, true);
-                await appState.webcam.setup(constraints);
-                await appState.webcam.play();
-                
-                elements.webcamViewer.appendChild(appState.webcam.canvas);
-                
-                // Iniciar detección en tiempo real
-                startDetectionLoop();
-                
-                console.log('✅ Cámara inicializada');
-                
-            } catch (error) {
-                console.error('❌ Error inicializando cámara:', error);
-                showError('No se pudo acceder a la cámara. Usa la opción de subir foto.');
-                elements.foodName.textContent = '📷 Usa "Subir foto"';
-            }
-        }
-
-        // Configurar event listeners
-        function setupEventListeners() {
-            // Botón de conservación
-            elements.btnConservation.addEventListener('click', async () => {
-                if (!appState.currentFood || appState.isProcessing) return;
-                await getAIResponse('conservation');
-            });
-            
-            // Botón de recetas
-            elements.btnRecipe.addEventListener('click', async () => {
-                if (!appState.currentFood || appState.isProcessing) return;
-                await getAIResponse('recipes');
-            });
-            
-            // Botón de subir foto
-            elements.btnUpload.addEventListener('click', () => {
-                elements.fileInput.click();
-            });
-            
-            // Input de archivo
-            elements.fileInput.addEventListener('change', handleFileUpload);
-        }
-
-        // Loop de detección en tiempo real
-        function startDetectionLoop() {
-            async function loop() {
-                if (!appState.isUsingPhoto && appState.webcam && appState.model) {
-                    appState.webcam.update();
-                    await detectFood(appState.webcam.canvas);
-                }
-                requestAnimationFrame(loop);
-            }
-            loop();
-        }
-
-        // Detectar alimento con Teachable Machine
-        async function detectFood(imageElement) {
-            try {
-                if (!appState.model) return;
-                
-                const predictions = await appState.model.predict(imageElement);
-                
-                let highestConfidence = 0;
-                let detectedClass = "";
-                
-                predictions.forEach(prediction => {
-                    if (prediction.probability > highestConfidence) {
-                        highestConfidence = prediction.probability;
-                        detectedClass = prediction.className;
-                    }
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
                 });
-                
-                if (highestConfidence > CONFIG.MIN_CONFIDENCE) {
-                    appState.currentFood = detectedClass;
-                    appState.currentConfidence = highestConfidence;
-                    
-                    // Análisis de imagen para detectar deterioro
-                    const spoilageAnalysis = await analyzeImageForSpoilage(imageElement);
-                    appState.isSpoiled = spoilageAnalysis.isSpoiled;
-                    appState.spoilageData = spoilageAnalysis;
-                    
-                    updateDetectionUI(detectedClass, highestConfidence, spoilageAnalysis);
-                }
-                
+                video.srcObject = stream;
             } catch (error) {
-                console.error('Error en detección:', error);
+                console.error('Error cámara:', error);
+                video.poster = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop';
             }
         }
 
-        // =============== ANÁLISIS DE IMAGEN PARA DETECTAR DETERIORO ===============
-        
-        // Analizar imagen para detectar alimentos en mal estado
-        async function analyzeImageForSpoilage(imageElement) {
-            return new Promise((resolve) => {
-                try {
-                    // Crear canvas para análisis
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    
-                    // Redimensionar para análisis más rápido
-                    const scale = 0.3;
-                    canvas.width = imageElement.width * scale;
-                    canvas.height = imageElement.height * scale;
-                    
-                    // Dibujar imagen
-                    ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
-                    
-                    // Obtener datos de píxeles
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const data = imageData.data;
-                    
-                    // Análisis de color para detectar deterioro
-                    let darkPixels = 0;    // Píxeles oscuros (marrón/negro)
-                    let moldPixels = 0;    // Píxeles verdes/grises (moho)
-                    let totalPixels = data.length / 4;
-                    
-                    for (let i = 0; i < data.length; i += 4) {
-                        const r = data[i];
-                        const g = data[i + 1];
-                        const b = data[i + 2];
-                        
-                        // Detectar colores de moho (verdes/grises)
-                        if (isMoldColor(r, g, b)) {
-                            moldPixels++;
-                        }
-                        
-                        // Detectar colores oscuros (deterioro)
-                        if (isDarkColor(r, g, b)) {
-                            darkPixels++;
-                        }
-                    }
-                    
-                    // Calcular porcentajes
-                    const moldPercentage = (moldPixels / totalPixels) * 100;
-                    const darkPercentage = (darkPixels / totalPixels) * 100;
-                    
-                    // Determinar probabilidad de deterioro
-                    let spoilageProbability = 0;
-                    let spoilageReason = "";
-                    
-                    if (moldPercentage > 1) {
-                        spoilageProbability = Math.min(100, moldPercentage * 20);
-                        spoilageReason = "Posible presencia de moho detectado";
-                    } else if (darkPercentage > 15) {
-                        spoilageProbability = Math.min(100, darkPercentage * 2);
-                        spoilageReason = "Áreas oscuras indican posible deterioro";
-                    }
-                    
-                    // Umbral para considerar "en mal estado"
-                    const isLikelySpoiled = spoilageProbability > 30;
-                    
-                    resolve({
-                        isSpoiled: isLikelySpoiled,
-                        probability: spoilageProbability,
-                        moldPercentage: moldPercentage.toFixed(2),
-                        darkPercentage: darkPercentage.toFixed(2),
-                        reason: spoilageReason,
-                        analysis: `Análisis: ${moldPercentage.toFixed(2)}% posible moho, ${darkPercentage.toFixed(2)}% áreas oscuras`
-                    });
-                    
-                } catch (error) {
-                    console.error('Error en análisis de imagen:', error);
-                    resolve({
-                        isSpoiled: false,
-                        probability: 0,
-                        error: error.message
-                    });
-                }
-            });
+        function analyzeSpoilage(imageData) {
+            const data = imageData.data;
+            let totalPixels = data.length / 4;
+            let moldPixels = 0, darkPixels = 0;
+            
+            const MOLD_THRESHOLD = 100;
+            const DARK_THRESHOLD = 50;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i], g = data[i + 1], b = data[i + 2];
+                if (g > MOLD_THRESHOLD && r < g * 0.8 && b < g * 0.8) moldPixels++;
+                if (r < DARK_THRESHOLD && g < DARK_THRESHOLD && b < DARK_THRESHOLD) darkPixels++;
+            }
+            
+            const moldPercent = Math.round((moldPixels / totalPixels) * 100);
+            const darkPercent = Math.round((darkPixels / totalPixels) * 100);
+            const freshPercent = 100 - Math.min(100, moldPercent + darkPercent);
+            
+            const confidence = Math.min(100, moldPercent * 3 + darkPercent * 2);
+            isSpoiled = confidence > 30;
+            
+            document.getElementById('moldValue').textContent = moldPercent + '%';
+            document.getElementById('darkValue').textContent = darkPercent + '%';
+            document.getElementById('freshValue').textContent = freshPercent + '%';
+            document.getElementById('confidenceFill').style.width = confidence + '%';
+            document.getElementById('confidenceText').textContent = 'Confianza: ' + confidence + '%';
+            
+            const fillColor = confidence < 30 ? '#34C759' : confidence < 60 ? '#FF9500' : '#FF3B30';
+            document.getElementById('confidenceFill').style.backgroundColor = fillColor;
+            
+            statusBadge.className = isSpoiled ? 'badge check' : 'badge fresh';
+            statusBadge.innerHTML = isSpoiled 
+                ? '<i class="fas fa-exclamation-triangle"></i><span>Revisar</span>'
+                : '<i class="fas fa-check-circle"></i><span>Fresco</span>';
+            
+            document.getElementById('spoilAnalysis').style.display = 'block';
+            
+            return { moldPercent, darkPercent, freshPercent, confidence, isSpoiled };
         }
 
-        // Función para detectar colores de moho
-        function isMoldColor(r, g, b) {
-            // Moho típico: verdes (100-150, 150-200, 100-150) o grises (100-150 en los 3)
-            const isGreenMold = (
-                g > 150 && 
-                r > 100 && r < 150 && 
-                b > 100 && b < 150
-            );
+        async function captureAndAnalyze(option) {
+            currentOption = option;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             
-            const isGrayMold = (
-                Math.abs(r - g) < 30 &&
-                Math.abs(g - b) < 30 &&
-                r > 80 && r < 180
-            );
+            const analysis = analyzeSpoilage(imageData);
             
-            return isGreenMold || isGrayMold;
-        }
-
-        // Función para detectar colores oscuros (deterioro)
-        function isDarkColor(r, g, b) {
-            const brightness = (r + g + b) / 3;
-            return brightness < 80; // Muy oscuro
-        }
-
-        // Actualizar UI con análisis de deterioro
-        function updateDetectionUI(food, confidence, spoilageAnalysis) {
-            elements.foodName.textContent = food;
-            elements.confidenceValue.textContent = `${(confidence * 100).toFixed(1)}%`;
-            elements.confidenceBar.style.width = `${confidence * 100}%`;
-            
-            // Mostrar resultados de detección
-            elements.detectionResults.style.display = 'block';
-            
-            // Mostrar análisis de deterioro
-            if (spoilageAnalysis.isSpoiled) {
-                elements.spoilageAnalysis.innerHTML = `
-                    <div class="spoilage-warning">
-                        <h4>⚠️ POSIBLE ALIMENTO EN MAL ESTADO</h4>
-                        <p>${spoilageAnalysis.reason}</p>
-                        <p><small>${spoilageAnalysis.analysis}</small></p>
-                        <div class="warning-actions">
-                            <button onclick="confirmSpoiled()" class="btn-warning">Confirmar mal estado</button>
-                            <button onclick="dismissWarning()" class="btn-secondary">Ignorar advertencia</button>
-                        </div>
-                    </div>
-                `;
+            if (analysis.isSpoiled) {
+                alert.style.display = 'flex';
             } else {
-                elements.spoilageAnalysis.innerHTML = `
-                    <div class="spoilage-ok">
-                        <h4>✅ ALIMENTO EN BUEN ESTADO</h4>
-                        <p>El análisis no detectó signos evidentes de deterioro.</p>
-                        <p><small>${spoilageAnalysis.analysis}</small></p>
-                    </div>
-                `;
+                getFoodNameAndCallAPI();
             }
-            
-            // Habilitar botones
-            elements.btnConservation.disabled = false;
-            elements.btnRecipe.disabled = false;
         }
 
-        // Funciones para manejar la advertencia de deterioro
-        window.confirmSpoiled = function() {
-            appState.isSpoiled = true;
-            elements.spoilageAnalysis.innerHTML = `
-                <div class="spoilage-confirmed">
-                    <h4>🚫 ESTADO CONFIRMADO: EN MAL ESTADO</h4>
-                    <p>No consumas este alimento. Procede con precaución.</p>
-                </div>
-            `;
-        };
+        async function getFoodNameAndCallAPI() {
+            const food = prompt("¿Qué alimento estás escaneando?", "manzana");
+            if (!food) return;
+            currentFood = food.toLowerCase().trim();
+            await callAPI();
+        }
 
-        window.dismissWarning = function() {
-            appState.isSpoiled = false;
-            elements.spoilageAnalysis.innerHTML = `
-                <div class="spoilage-dismissed">
-                    <h4>⚠️ ADVERTENCIA DESCARTADA</h4>
-                    <p>Continúa con precaución y verifica visualmente el alimento.</p>
-                </div>
-            `;
-        };
-
-        // =============== MANEJO DE ARCHIVOS ===============
-        
-        // Manejar subida de archivo
-        async function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            // Validaciones
-            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-            
-            if (!validTypes.includes(file.type.toLowerCase())) {
-                showError(`Formato no soportado. Usa: ${validTypes.join(', ')}`);
-                return;
-            }
-            
-            if (file.size > 10 * 1024 * 1024) {
-                showError('La imagen es demasiado grande (máximo 10MB)');
-                return;
-            }
-            
-            appState.isProcessing = true;
-            appState.isUsingPhoto = true;
+        async function callAPI() {
+            loading.style.display = 'flex';
+            resultCard.style.display = 'none';
+            alert.style.display = 'none';
             
             try {
-                // Mostrar preview
-                const reader = new FileReader();
-                
-                reader.onload = async (e) => {
-                    const img = new Image();
-                    img.onload = async () => {
-                        // Crear canvas
-                        const canvas = document.createElement('canvas');
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0);
-                        
-                        // Análisis de imagen para detectar deterioro
-                        const spoilageAnalysis = await analyzeImageForSpoilage(canvas);
-                        
-                        // Redimensionar para el modelo
-                        const resizedCanvas = resizeCanvas(canvas, 224, 224);
-                        
-                        // Detectar con Teachable Machine
-                        const predictions = await appState.model.predict(resizedCanvas);
-                        const topPrediction = predictions[0];
-                        
-                        appState.currentFood = topPrediction.className;
-                        appState.currentConfidence = topPrediction.probability;
-                        appState.isSpoiled = spoilageAnalysis.isSpoiled;
-                        appState.spoilageData = spoilageAnalysis;
-                        
-                        updateDetectionUI(
-                            topPrediction.className, 
-                            topPrediction.probability, 
-                            spoilageAnalysis
-                        );
-                        
-                        // Mostrar preview
-                        elements.imagePreview.src = img.src;
-                        elements.imagePreview.style.display = 'block';
-                        elements.webcamViewer.style.display = 'none';
-                        
-                        appState.isUsingPhoto = false;
-                        appState.isProcessing = false;
-                    };
-                    
-                    img.src = e.target.result;
-                };
-                
-                reader.readAsDataURL(file);
-                
-            } catch (error) {
-                console.error('Error subiendo archivo:', error);
-                showError('Error al procesar la imagen');
-                appState.isProcessing = false;
-                appState.isUsingPhoto = false;
-            }
-        }
-
-        // Redimensionar canvas
-        function resizeCanvas(canvas, width, height) {
-            const resizedCanvas = document.createElement('canvas');
-            const ctx = resizedCanvas.getContext('2d');
-            
-            resizedCanvas.width = width;
-            resizedCanvas.height = height;
-            
-            ctx.drawImage(canvas, 0, 0, width, height);
-            
-            return resizedCanvas;
-        }
-
-        // =============== FUNCIONES DE IA ===============
-        
-        // Obtener respuesta de IA
-        async function getAIResponse(option) {
-            if (!appState.currentFood || appState.isProcessing) return;
-            
-            appState.isProcessing = true;
-            
-            try {
-                // Mostrar UI de carga
-                elements.aiResponse.style.display = 'block';
-                elements.responseTitle.textContent = option === 'conservation' 
-                    ? `Conservación: ${appState.currentFood}`
-                    : `Recetas con ${appState.currentFood}`;
-                
-                elements.aiText.innerHTML = '<div class="loader"></div> Consultando IA...';
-                
-                // Llamar a la API con información del estado
-                const response = await fetch(CONFIG.API_ENDPOINT, {
+                const response = await fetch('/api/chat', {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        food: appState.currentFood,
-                        option: option,
-                        isSpoiled: appState.isSpoiled,
-                        spoilageData: appState.spoilageData
+                        food: currentFood,
+                        option: currentOption,
+                        isSpoiled: isSpoiled
                     })
                 });
                 
                 const data = await response.json();
-                
-                if (data.success && data.generated_text) {
-                    // Formatear respuesta
-                    let formattedText = data.generated_text;
-                    
-                    // Añadir indicador de fuente
-                    if (data.ai_generated) {
-                        formattedText += `\n\n<small><i>✨ Respuesta generada por IA</i></small>`;
-                    } else {
-                        formattedText += `\n\n<small><i>📚 Base de datos local</i></small>`;
-                    }
-                    
-                    // Añadir información de categoría si está disponible
-                    if (data.food_category) {
-                        formattedText = `📊 <strong>Categoría:</strong> ${data.food_category}\n\n${formattedText}`;
-                    }
-                    
-                    elements.aiText.innerHTML = formattedText.replace(/\n/g, '<br>');
-                } else {
-                    elements.aiText.innerHTML = 'Error en la respuesta del servidor.';
-                }
+                resultTitle.textContent = currentOption === 'conservation' 
+                    ? `Conservación de ${currentFood}` 
+                    : `Receta con ${currentFood}`;
+                resultSubtitle.textContent = isSpoiled ? '⚠️ Alimento en mal estado' : '✅ Alimento fresco';
+                resultContent.textContent = data.response;
                 
             } catch (error) {
-                console.error('Error obteniendo respuesta:', error);
-                elements.aiText.innerHTML = 'Error de conexión. Verifica tu internet.';
+                resultContent.textContent = `Error: ${error.message}. Por favor, intenta de nuevo.`;
             } finally {
-                appState.isProcessing = false;
+                loading.style.display = 'none';
+                resultCard.style.display = 'block';
             }
         }
 
-        // =============== UTILIDADES ===============
-        
-        // Mostrar error
-        function showError(message) {
-            // Mostrar error temporal
-            const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: var(--danger);
-                color: white;
-                padding: 12px 20px;
-                border-radius: 8px;
-                z-index: 10000;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                animation: slideIn 0.3s ease;
-            `;
-            
-            errorDiv.innerHTML = `❌ ${message}`;
-            document.body.appendChild(errorDiv);
-            
-            setTimeout(() => {
-                if (errorDiv.parentNode) {
-                    errorDiv.remove();
-                }
-            }, 5000);
-        }
+        captureBtn.addEventListener('click', () => captureAndAnalyze('conservation'));
+        recipeBtn.addEventListener('click', () => captureAndAnalyze('recipe'));
+        document.getElementById('proceedBtn').addEventListener('click', getFoodNameAndCallAPI);
+        document.getElementById('dismissBtn').addEventListener('click', () => {
+            alert.style.display = 'none';
+            isSpoiled = false;
+        });
 
-        // Cambiar cámara (delantera/trasera)
-        window.flipCamera = function() {
-            try {
-                appState.cameraFacingMode = appState.cameraFacingMode === 'environment' ? 'user' : 'environment';
-                initCamera();
-            } catch (error) {
-                console.error('Error cambiando cámara:', error);
-                showError('No se pudo cambiar la cámara');
-            }
-        };
-
-        // Capturar imagen desde la cámara
-        window.captureImage = async function() {
-            if (appState.isProcessing || !appState.webcam) return;
-            
-            appState.isProcessing = true;
-            
-            try {
-                // Crear canvas temporal
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                
-                canvas.width = appState.webcam.canvas.width;
-                canvas.height = appState.webcam.canvas.height;
-                
-                context.drawImage(appState.webcam.canvas, 0, 0, canvas.width, canvas.height);
-                
-                // Análisis de imagen para detectar deterioro
-                const spoilageAnalysis = await analyzeImageForSpoilage(canvas);
-                
-                // Redimensionar para el modelo
-                const resizedCanvas = resizeCanvas(canvas, 224, 224);
-                
-                // Detectar con Teachable Machine
-                const predictions = await appState.model.predict(resizedCanvas);
-                const topPrediction = predictions[0];
-                
-                appState.currentFood = topPrediction.className;
-                appState.currentConfidence = topPrediction.probability;
-                appState.isSpoiled = spoilageAnalysis.isSpoiled;
-                appState.spoilageData = spoilageAnalysis;
-                
-                updateDetectionUI(
-                    topPrediction.className, 
-                    topPrediction.probability, 
-                    spoilageAnalysis
-                );
-                
-            } catch (error) {
-                console.error('Error capturando imagen:', error);
-                showError('Error al capturar la foto');
-            } finally {
-                appState.isProcessing = false;
-            }
-        };
+        initCamera();
     </script>
 </body>
 </html>
