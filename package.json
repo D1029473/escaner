@@ -1,9 +1,3 @@
 {
-  "name": "freshscan-ai",
-  "version": "2.3.0",
-  "description": "App de análisis de alimentos con IA y detección de deterioro",
-  "type": "module",
-  "engines": {
-    "node": ">=18"
-  }
+  "type": "module"
 }
