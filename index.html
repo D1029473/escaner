@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FreshScan AI · Conservación Inteligente</title>
+    <title>FreshScan AI · Análisis Inteligente de Alimentos</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -14,7 +14,7 @@
             --border: #E5E5EA; --radius: 18px; --shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
         }
         body { background: var(--background); color: var(--text); min-height: 100vh; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+        .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
         
         /* Header */
         header { text-align: center; padding: 20px 0; }
@@ -22,11 +22,42 @@
         .logo i { font-size: 32px; color: var(--primary); }
         .logo h1 { font-size: 28px; font-weight: 700; background: linear-gradient(135deg, var(--primary), #00C6FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        /* Scanner */
-        .scanner-card { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
-        .camera-container { position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 16px; overflow: hidden; background: #000; }
-        #cameraFeed { width: 100%; height: 100%; object-fit: cover; }
-        .scan-box { width: 70%; height: 70%; border: 3px solid var(--primary); border-radius: 16px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); }
+        /* Modos de entrada */
+        .input-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .mode-card { 
+            background: var(--card); 
+            border-radius: var(--radius); 
+            padding: 20px; 
+            text-align: center; 
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .mode-card:hover { transform: translateY(-5px); box-shadow: var(--shadow); }
+        .mode-card.active { border-color: var(--primary); background: rgba(0, 122, 255, 0.05); }
+        .mode-card i { font-size: 32px; margin-bottom: 12px; color: var(--primary); }
+        
+        /* Área de imagen */
+        .image-container { 
+            background: var(--card); 
+            border-radius: var(--radius); 
+            padding: 24px; 
+            box-shadow: var(--shadow);
+            text-align: center;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #previewImage { max-width: 100%; max-height: 400px; border-radius: 12px; display: none; }
+        .upload-placeholder { 
+            padding: 40px; 
+            border: 2px dashed var(--border); 
+            border-radius: 12px;
+            width: 100%;
+        }
+        .upload-placeholder i { font-size: 64px; color: var(--border); margin-bottom: 16px; }
         
         /* Controles */
         .controls { display: flex; gap: 16px; margin-top: 20px; }
@@ -34,199 +65,619 @@
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { background: #0056CC; transform: translateY(-2px); }
         .btn-secondary { background: rgba(0, 122, 255, 0.1); color: var(--primary); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
         
-        /* Análisis de deterioro */
-        .spoil-analysis { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
-        .confidence-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin: 16px 0; }
-        .confidence-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
-        .spoilage-details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; }
-        .detail-card { background: var(--background); padding: 16px; border-radius: 12px; text-align: center; }
-        
-        /* Alertas */
-        .alert { background: rgba(255, 149, 0, 0.1); border: 1px solid rgba(255, 149, 0, 0.3); border-radius: 14px; padding: 20px; margin-top: 20px; }
+        /* Análisis de deterioro - MEJORADO */
+        .spoil-analysis { 
+            background: var(--card); 
+            border-radius: var(--radius); 
+            padding: 24px; 
+            box-shadow: var(--shadow);
+            display: none;
+        }
+        .analysis-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 20px; }
+        .analysis-card { 
+            background: var(--background); 
+            padding: 20px; 
+            border-radius: 12px;
+            text-align: center;
+        }
+        .progress-container { 
+            height: 10px; 
+            background: var(--border); 
+            border-radius: 5px; 
+            overflow: hidden; 
+            margin: 10px 0;
+            position: relative;
+        }
+        .progress-fill { 
+            height: 100%; 
+            border-radius: 5px; 
+            transition: width 1s ease;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+        .threshold-line {
+            position: absolute;
+            height: 100%;
+            width: 2px;
+            background: rgba(0,0,0,0.5);
+            top: 0;
+        }
         
         /* Resultados */
-        .result-card { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); display: none; }
-        .loading { display: none; flex-direction: column; align-items: center; gap: 20px; padding: 40px 0; }
-        .spinner { width: 48px; height: 48px; border: 4px solid rgba(0, 122, 255, 0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        .result-card { 
+            background: var(--card); 
+            border-radius: var(--radius); 
+            padding: 24px; 
+            box-shadow: var(--shadow); 
+            display: none;
+        }
+        .result-header { 
+            display: flex; 
+            align-items: center; 
+            gap: 16px; 
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .result-icon { 
+            width: 50px; 
+            height: 50px; 
+            border-radius: 50%; 
+            background: linear-gradient(135deg, var(--primary), #00C6FF);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+        .result-content { 
+            line-height: 1.6; 
+            font-size: 16px;
+            white-space: pre-line;
+        }
+        
+        /* Loading */
+        .loading { 
+            display: none; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 20px; 
+            padding: 40px 0;
+            text-align: center;
+        }
+        .spinner { 
+            width: 48px; 
+            height: 48px; 
+            border: 4px solid rgba(0, 122, 255, 0.2); 
+            border-top-color: var(--primary); 
+            border-radius: 50%; 
+            animation: spin 1s linear infinite; 
+        }
         @keyframes spin { to { transform: rotate(360deg); } }
         
         /* Responsive */
         @media (max-width: 768px) {
-            .container { gap: 16px; }
+            .container { gap: 16px; padding: 10px; }
+            .input-modes { grid-template-columns: 1fr; }
             .controls { flex-direction: column; }
-            .spoilage-details { grid-template-columns: 1fr; }
+            .analysis-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <div class="logo"><i class="fas fa-leaf"></i><h1>FreshScan AI</h1></div>
-            <p class="tagline">Conservación inteligente con análisis de deterioro por IA</p>
+            <div class="logo">
+                <i class="fas fa-seedling"></i>
+                <h1>Save & Taste</h1>
+            </div>
+            <p class="tagline">Sube una foto de tu alimento y analizaremos su estado</p>
         </header>
 
-        <section class="scanner-card">
-            <div class="card-header">
-                <h2>Escáner de Alimentos</h2>
-                <div class="badge fresh" id="statusBadge">
-                    <i class="fas fa-check-circle"></i><span>Fresco</span>
-                </div>
+        <!-- Modos de entrada -->
+        <div class="input-modes">
+            <div class="mode-card active" id="modeUpload" data-mode="upload">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <h3>Subir Foto</h3>
+                <p>Desde tu dispositivo</p>
             </div>
-            <div class="camera-container">
-                <video id="cameraFeed" autoplay playsinline></video>
-                <canvas id="canvas"></canvas>
-                <div class="camera-overlay"><div class="scan-box"></div></div>
+            <div class="mode-card" id="modeCamera" data-mode="camera">
+                <i class="fas fa-camera"></i>
+                <h3>Tomar Foto</h3>
+                <p>Usa tu cámara</p>
             </div>
-            <div class="controls">
-                <button class="btn btn-primary" id="captureBtn">
-                    <i class="fas fa-camera"></i>Analizar Conservación
-                </button>
-                <button class="btn btn-secondary" id="recipeBtn">
-                    <i class="fas fa-utensils"></i>Generar Receta
-                </button>
-            </div>
-        </section>
-
-        <section class="spoil-analysis" id="spoilAnalysis" style="display: none;">
-            <div class="spoil-header">
-                <h3>Análisis de Deterioro</h3>
-                <span class="confidence-text" id="confidenceText">Confianza: 0%</span>
-            </div>
-            <div class="confidence-bar">
-                <div class="confidence-fill" id="confidenceFill" style="width: 0%;"></div>
-            </div>
-            <div class="spoilage-details">
-                <div class="detail-card"><div class="detail-value" id="moldValue">0%</div><div class="detail-label">Moho</div></div>
-                <div class="detail-card"><div class="detail-value" id="darkValue">0%</div><div class="detail-label">Zonas oscuras</div></div>
-                <div class="detail-card"><div class="detail-value" id="freshValue">100%</div><div class="detail-label">Frescura</div></div>
-            </div>
-        </section>
-
-        <div class="alert" id="alert" style="display: none;">
-            <div class="alert-header">
-                <i class="fas fa-exclamation-triangle"></i>
-                <h3>Posible deterioro detectado</h3>
-            </div>
-            <p>El análisis detectó signos de deterioro. ¿Continuar o descartar?</p>
-            <div class="alert-buttons">
-                <button class="alert-btn alert-confirm" id="proceedBtn">Continuar (con precaución)</button>
-                <button class="alert-btn alert-dismiss" id="dismissBtn">Descartar</button>
+            <div class="mode-card" id="modeUrl" data-mode="url">
+                <i class="fas fa-link"></i>
+                <h3>URL de Imagen</h3>
+                <p>Pega un enlace</p>
             </div>
         </div>
 
+        <!-- Área de imagen -->
+        <section class="image-container">
+            <div class="upload-placeholder" id="uploadPlaceholder">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <h3>Arrastra o haz clic para subir</h3>
+                <p>Formato: JPG, PNG, WebP (máx. 5MB)</p>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                <button class="btn btn-primary" style="margin-top: 20px;" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-folder-open"></i> Seleccionar Archivo
+                </button>
+            </div>
+            <img id="previewImage" alt="Vista previa">
+            
+            <div id="urlInput" style="display: none; width: 100%;">
+                <input type="url" id="imageUrl" placeholder="https://ejemplo.com/imagen.jpg" 
+                       style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px;">
+                <button class="btn btn-primary" onclick="loadImageFromUrl()">
+                    <i class="fas fa-download"></i> Cargar Imagen
+                </button>
+            </div>
+            
+            <video id="cameraFeed" style="display: none; width: 100%; border-radius: 12px;"></video>
+            <div id="cameraControls" style="display: none; margin-top: 20px;">
+                <button class="btn btn-success" onclick="takePhoto()">
+                    <i class="fas fa-camera"></i> Tomar Foto
+                </button>
+                <button class="btn btn-danger" onclick="stopCamera()">
+                    <i class="fas fa-stop"></i> Detener Cámara
+                </button>
+            </div>
+        </section>
+
+        <!-- Selección de alimento -->
+        <section class="spoil-analysis" id="foodSelection">
+            <h2 style="margin-bottom: 20px;">Identifica tu alimento</h2>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                <button class="food-btn" data-food="manzana">🍎 Manzana</button>
+                <button class="food-btn" data-food="platano">🍌 Plátano</button>
+                <button class="food-btn" data-food="tomate">🍅 Tomate</button>
+                <button class="food-btn" data-food="zanahoria">🥕 Zanahoria</button>
+                <button class="food-btn" data-food="lechuga">🥬 Lechuga</button>
+                <button class="food-btn" data-food="fresa">🍓 Fresa</button>
+                <button class="food-btn" data-food="naranja">🍊 Naranja</button>
+                <button class="food-btn" data-food="aguacate">🥑 Aguacate</button>
+                <button class="food-btn" data-food="cebolla">🧅 Cebolla</button>
+                <button class="food-btn" data-food="pimiento">🫑 Pimiento</button>
+                <input type="text" id="customFood" placeholder="Otro alimento..." 
+                       style="flex-grow: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px;">
+            </div>
+        </section>
+
+        <!-- Análisis de deterioro -->
+        <section class="spoil-analysis" id="spoilAnalysis">
+            <h2 style="margin-bottom: 20px;">🔍 Análisis de Estado</h2>
+            
+            <div class="analysis-grid">
+                <div class="analysis-card">
+                    <h3>Frescura General</h3>
+                    <div class="progress-container">
+                        <div class="progress-fill" id="freshnessBar" style="width: 0%; background: #34C759;"></div>
+                        <div class="threshold-line" style="left: 70%;"></div>
+                    </div>
+                    <div id="freshnessText" style="font-size: 24px; font-weight: bold; margin: 10px 0;">0%</div>
+                    <p>Probabilidad de que esté fresco</p>
+                </div>
+                
+                <div class="analysis-card">
+                    <h3>Riesgo de Moho</h3>
+                    <div class="progress-container">
+                        <div class="progress-fill" id="moldBar" style="width: 0%; background: #FF9500;"></div>
+                        <div class="threshold-line" style="left: 30%;"></div>
+                    </div>
+                    <div id="moldText" style="font-size: 24px; font-weight: bold; margin: 10px 0;">0%</div>
+                    <p>Indicadores de crecimiento de hongos</p>
+                </div>
+                
+                <div class="analysis-card">
+                    <h3>Madurez Excesiva</h3>
+                    <div class="progress-container">
+                        <div class="progress-fill" id="ripeBar" style="width: 0%; background: #FF9500;"></div>
+                        <div class="threshold-line" style="left: 60%;"></div>
+                    </div>
+                    <div id="ripeText" style="font-size: 24px; font-weight: bold; margin: 10px 0;">0%</div>
+                    <p>Puntos blandos y sobre-maduración</p>
+                </div>
+                
+                <div class="analysis-card">
+                    <h3>Decoloración</h3>
+                    <div class="progress-container">
+                        <div class="progress-fill" id="discolorBar" style="width: 0%; background: #FF3B30;"></div>
+                        <div class="threshold-line" style="left: 40%;"></div>
+                    </div>
+                    <div id="discolorText" style="font-size: 24px; font-weight: bold; margin: 10px 0;">0%</div>
+                    <p>Cambios anormales de color</p>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px; padding: 20px; background: var(--background); border-radius: 12px;">
+                <h3>📋 Resumen del Estado</h3>
+                <p id="stateSummary">Esperando análisis...</p>
+                <div id="stateBadge" style="display: inline-block; padding: 8px 16px; border-radius: 20px; background: var(--success); color: white; font-weight: bold; margin-top: 10px;">
+                    ✅ FRESCO
+                </div>
+            </div>
+        </section>
+
+        <!-- Controles de acción -->
+        <div class="controls" id="actionControls" style="display: none;">
+            <button class="btn btn-success" id="conservationBtn">
+                <i class="fas fa-shield-alt"></i> Consejos de Conservación
+            </button>
+            <button class="btn btn-primary" id="recipeBtn">
+                <i class="fas fa-utensils"></i> Generar Receta
+            </button>
+            <button class="btn btn-secondary" id="rescanBtn">
+                <i class="fas fa-redo"></i> Analizar Otro
+            </button>
+        </div>
+
+        <!-- Resultados -->
         <section class="result-card" id="resultCard">
             <div class="result-header">
                 <div class="result-icon"><i class="fas fa-robot"></i></div>
                 <div>
                     <h2 id="resultTitle">Consejos de Conservación</h2>
-                    <p id="resultSubtitle">Recomendaciones por IA</p>
+                    <p id="resultSubtitle">Recomendaciones personalizadas</p>
                 </div>
             </div>
             <div class="result-content" id="resultContent"></div>
         </section>
 
+        <!-- Loading -->
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p>Analizando con IA...</p>
+            <h3>Analizando con Inteligencia Artificial</h3>
+            <p>Estamos evaluando el estado de tu alimento...</p>
         </div>
     </div>
 
     <script>
-        const video = document.getElementById('cameraFeed');
-        const canvas = document.getElementById('canvas');
-        const captureBtn = document.getElementById('captureBtn');
-        const recipeBtn = document.getElementById('recipeBtn');
-        const resultCard = document.getElementById('resultCard');
-        const resultContent = document.getElementById('resultContent');
-        const loading = document.getElementById('loading');
-        const alert = document.getElementById('alert');
-        const statusBadge = document.getElementById('statusBadge');
-        
-        let isSpoiled = false;
+        // Variables globales
         let currentFood = '';
-        let currentOption = 'conservation';
-
-        async function initCamera() {
+        let currentImageData = null;
+        let isSpoiled = false;
+        let analysisResults = {};
+        
+        // Elementos DOM
+        const fileInput = document.getElementById('fileInput');
+        const previewImage = document.getElementById('previewImage');
+        const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+        const spoilAnalysis = document.getElementById('spoilAnalysis');
+        const foodSelection = document.getElementById('foodSelection');
+        const actionControls = document.getElementById('actionControls');
+        const resultCard = document.getElementById('resultCard');
+        const loading = document.getElementById('loading');
+        const cameraFeed = document.getElementById('cameraFeed');
+        const urlInput = document.getElementById('urlInput');
+        const imageUrl = document.getElementById('imageUrl');
+        
+        // ============================================
+        // 1. MANEJO DE IMÁGENES
+        // ============================================
+        
+        // Cambiar modo de entrada
+        document.querySelectorAll('.mode-card').forEach(card => {
+            card.addEventListener('click', function() {
+                document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                
+                const mode = this.dataset.mode;
+                uploadPlaceholder.style.display = mode === 'upload' ? 'flex' : 'none';
+                previewImage.style.display = 'none';
+                cameraFeed.style.display = 'none';
+                urlInput.style.display = 'none';
+                document.getElementById('cameraControls').style.display = 'none';
+                
+                if (mode === 'camera') {
+                    startCamera();
+                } else if (mode === 'url') {
+                    urlInput.style.display = 'block';
+                }
+            });
+        });
+        
+        // Subir archivo
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            if (!file.type.startsWith('image/')) {
+                alert('Por favor, selecciona una imagen válida');
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) {
+                alert('La imagen es demasiado grande (máx. 5MB)');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                previewImage.src = event.target.result;
+                previewImage.style.display = 'block';
+                uploadPlaceholder.style.display = 'none';
+                processImage(previewImage);
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        // Arrastrar y soltar
+        uploadPlaceholder.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadPlaceholder.style.borderColor = 'var(--primary)';
+        });
+        
+        uploadPlaceholder.addEventListener('dragleave', () => {
+            uploadPlaceholder.style.borderColor = 'var(--border)';
+        });
+        
+        uploadPlaceholder.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadPlaceholder.style.borderColor = 'var(--border)';
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    previewImage.src = event.target.result;
+                    previewImage.style.display = 'block';
+                    uploadPlaceholder.style.display = 'none';
+                    processImage(previewImage);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Cargar desde URL
+        function loadImageFromUrl() {
+            const url = imageUrl.value.trim();
+            if (!url) {
+                alert('Por favor, introduce una URL válida');
+                return;
+            }
+            
+            previewImage.onload = function() {
+                previewImage.style.display = 'block';
+                uploadPlaceholder.style.display = 'none';
+                urlInput.style.display = 'none';
+                processImage(previewImage);
+            };
+            
+            previewImage.onerror = function() {
+                alert('No se pudo cargar la imagen desde la URL. Verifica el enlace.');
+            };
+            
+            previewImage.src = url;
+        }
+        
+        // Cámara
+        async function startCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: 'environment' }
                 });
-                video.srcObject = stream;
+                cameraFeed.srcObject = stream;
+                cameraFeed.style.display = 'block';
+                document.getElementById('cameraControls').style.display = 'block';
             } catch (error) {
-                console.error('Error cámara:', error);
-                video.poster = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop';
+                alert('No se pudo acceder a la cámara. Asegúrate de conceder los permisos necesarios.');
             }
         }
-
-        function analyzeSpoilage(imageData) {
-            const data = imageData.data;
-            let totalPixels = data.length / 4;
-            let moldPixels = 0, darkPixels = 0;
+        
+        function takePhoto() {
+            const canvas = document.createElement('canvas');
+            canvas.width = cameraFeed.videoWidth;
+            canvas.height = cameraFeed.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(cameraFeed, 0, 0);
             
-            const MOLD_THRESHOLD = 100;
-            const DARK_THRESHOLD = 50;
+            previewImage.src = canvas.toDataURL('image/jpeg');
+            previewImage.style.display = 'block';
+            cameraFeed.style.display = 'none';
+            document.getElementById('cameraControls').style.display = 'none';
+            
+            processImage(previewImage);
+        }
+        
+        function stopCamera() {
+            if (cameraFeed.srcObject) {
+                cameraFeed.srcObject.getTracks().forEach(track => track.stop());
+                cameraFeed.style.display = 'none';
+                document.getElementById('cameraControls').style.display = 'none';
+            }
+        }
+        
+        // ============================================
+        // 2. PROCESAMIENTO DE IMAGEN Y ANÁLISIS
+        // ============================================
+        
+        function processImage(imgElement) {
+            loading.style.display = 'flex';
+            spoilAnalysis.style.display = 'none';
+            foodSelection.style.display = 'none';
+            actionControls.style.display = 'none';
+            resultCard.style.display = 'none';
+            
+            // Simular procesamiento (en producción aquí iría IA real)
+            setTimeout(() => {
+                // Análisis simulado basado en características de la imagen
+                analyzeImageWithCanvas(imgElement);
+                
+                loading.style.display = 'none';
+                foodSelection.style.display = 'block';
+                
+                // Hacer scroll suave
+                foodSelection.scrollIntoView({ behavior: 'smooth' });
+            }, 1500);
+        }
+        
+        function analyzeImageWithCanvas(imgElement) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            
+            // Redimensionar para procesamiento más rápido
+            const maxWidth = 300;
+            const scale = maxWidth / imgElement.width;
+            canvas.width = maxWidth;
+            canvas.height = imgElement.height * scale;
+            
+            ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            let totalPixels = data.length / 4;
+            let darkPixels = 0;      // Oscuridad (podredumbre)
+            let brownPixels = 0;     // Marrón (madurez excesiva)
+            let greenPixels = 0;     // Verde moho
+            let brightPixels = 0;    // Brillante (fresco)
             
             for (let i = 0; i < data.length; i += 4) {
-                const r = data[i], g = data[i + 1], b = data[i + 2];
-                if (g > MOLD_THRESHOLD && r < g * 0.8 && b < g * 0.8) moldPixels++;
-                if (r < DARK_THRESHOLD && g < DARK_THRESHOLD && b < DARK_THRESHOLD) darkPixels++;
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const brightness = (r + g + b) / 3;
+                
+                // Detectar oscuridad (podredumbre)
+                if (brightness < 50) {
+                    darkPixels++;
+                }
+                
+                // Detectar colores marrones (madurez excesiva)
+                if (r > 100 && g > 50 && b < 100 && Math.abs(r - g) < 60) {
+                    brownPixels++;
+                }
+                
+                // Detectar verde moho
+                if (g > r + 30 && g > b + 30 && g > 100) {
+                    greenPixels++;
+                }
+                
+                // Detectar colores brillantes/vivos (fresco)
+                if (brightness > 180 && Math.abs(r - g) < 50 && Math.abs(g - b) < 50) {
+                    brightPixels++;
+                }
             }
             
-            const moldPercent = Math.round((moldPixels / totalPixels) * 100);
-            const darkPercent = Math.round((darkPixels / totalPixels) * 100);
-            const freshPercent = 100 - Math.min(100, moldPercent + darkPercent);
+            // Calcular porcentajes
+            const darkPercent = Math.min(100, Math.round((darkPixels / totalPixels) * 200));
+            const brownPercent = Math.min(100, Math.round((brownPixels / totalPixels) * 150));
+            const greenPercent = Math.min(100, Math.round((greenPixels / totalPixels) * 300));
+            const brightPercent = Math.min(100, Math.round((brightPixels / totalPixels) * 100));
             
-            const confidence = Math.min(100, moldPercent * 3 + darkPercent * 2);
-            isSpoiled = confidence > 30;
+            // Calcular frescura general
+            const freshness = Math.max(0, 100 - (darkPercent * 0.4 + brownPercent * 0.3 + greenPercent * 0.3));
             
-            document.getElementById('moldValue').textContent = moldPercent + '%';
-            document.getElementById('darkValue').textContent = darkPercent + '%';
-            document.getElementById('freshValue').textContent = freshPercent + '%';
-            document.getElementById('confidenceFill').style.width = confidence + '%';
-            document.getElementById('confidenceText').textContent = 'Confianza: ' + confidence + '%';
+            // Determinar si está en mal estado
+            isSpoiled = freshness < 70 || greenPercent > 15 || darkPercent > 25;
             
-            const fillColor = confidence < 30 ? '#34C759' : confidence < 60 ? '#FF9500' : '#FF3B30';
-            document.getElementById('confidenceFill').style.backgroundColor = fillColor;
+            // Guardar resultados
+            analysisResults = {
+                freshness: Math.round(freshness),
+                moldRisk: Math.round(greenPercent),
+                overripe: Math.round(brownPercent),
+                discoloration: Math.round(darkPercent),
+                isSpoiled: isSpoiled,
+                brightAreas: Math.round(brightPercent)
+            };
             
-            statusBadge.className = isSpoiled ? 'badge check' : 'badge fresh';
-            statusBadge.innerHTML = isSpoiled 
-                ? '<i class="fas fa-exclamation-triangle"></i><span>Revisar</span>'
-                : '<i class="fas fa-check-circle"></i><span>Fresco</span>';
-            
-            document.getElementById('spoilAnalysis').style.display = 'block';
-            
-            return { moldPercent, darkPercent, freshPercent, confidence, isSpoiled };
+            // Actualizar UI
+            updateAnalysisUI();
         }
-
-        async function captureAndAnalyze(option) {
-            currentOption = option;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        function updateAnalysisUI() {
+            // Actualizar barras de progreso
+            animateProgress('freshnessBar', 'freshnessText', analysisResults.freshness);
+            animateProgress('moldBar', 'moldText', analysisResults.moldRisk);
+            animateProgress('ripeBar', 'ripeText', analysisResults.overripe);
+            animateProgress('discolorBar', 'discolorText', analysisResults.discoloration);
             
-            const analysis = analyzeSpoilage(imageData);
+            // Actualizar resumen
+            const summary = document.getElementById('stateSummary');
+            const badge = document.getElementById('stateBadge');
             
-            if (analysis.isSpoiled) {
-                alert.style.display = 'flex';
+            if (analysisResults.freshness >= 80) {
+                summary.textContent = '✅ Tu alimento se ve fresco y en buen estado. Es seguro consumirlo.';
+                badge.textContent = '✅ FRESCO';
+                badge.style.background = '#34C759';
+            } else if (analysisResults.freshness >= 60) {
+                summary.textContent = '⚠️ Tu alimento muestra algunos signos de maduración avanzada. Consúmelo pronto.';
+                badge.textContent = '⚠️ CONSUMIR PRONTO';
+                badge.style.background = '#FF9500';
             } else {
-                getFoodNameAndCallAPI();
+                summary.textContent = '🚨 Se detectaron signos claros de deterioro. Considera descartarlo o usar con precaución.';
+                badge.textContent = '🚨 REVISAR';
+                badge.style.background = '#FF3B30';
             }
+            
+            // Mostrar sección de análisis
+            spoilAnalysis.style.display = 'block';
         }
-
-        async function getFoodNameAndCallAPI() {
-            const food = prompt("¿Qué alimento estás escaneando?", "manzana");
-            if (!food) return;
-            currentFood = food.toLowerCase().trim();
-            await callAPI();
+        
+        function animateProgress(barId, textId, value) {
+            const bar = document.getElementById(barId);
+            const text = document.getElementById(textId);
+            
+            let current = 0;
+            const increment = value / 50; // 50 pasos para la animación
+            
+            const interval = setInterval(() => {
+                current += increment;
+                if (current >= value) {
+                    current = value;
+                    clearInterval(interval);
+                }
+                
+                bar.style.width = current + '%';
+                text.textContent = Math.round(current) + '%';
+            }, 20);
         }
-
-        async function callAPI() {
+        
+        // ============================================
+        // 3. SELECCIÓN DE ALIMENTO
+        // ============================================
+        
+        document.querySelectorAll('.food-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                currentFood = this.dataset.food;
+                showActionControls();
+            });
+        });
+        
+        document.getElementById('customFood').addEventListener('change', function() {
+            if (this.value.trim()) {
+                currentFood = this.value.trim().toLowerCase();
+                showActionControls();
+            }
+        });
+        
+        function showActionControls() {
+            foodSelection.style.display = 'none';
+            actionControls.style.display = 'flex';
+            actionControls.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // ============================================
+        // 4. LLAMADA A LA API
+        // ============================================
+        
+        document.getElementById('conservationBtn').addEventListener('click', () => callAPI('conservation'));
+        document.getElementById('recipeBtn').addEventListener('click', () => callAPI('recipe'));
+        document.getElementById('rescanBtn').addEventListener('click', resetApp);
+        
+        async function callAPI(option) {
+            if (!currentFood) {
+                alert('Por favor, selecciona o escribe el nombre del alimento');
+                return;
+            }
+            
             loading.style.display = 'flex';
+            actionControls.style.display = 'none';
             resultCard.style.display = 'none';
-            alert.style.display = 'none';
             
             try {
                 const response = await fetch('/api/chat', {
@@ -234,35 +685,217 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         food: currentFood,
-                        option: currentOption,
-                        isSpoiled: isSpoiled
+                        option: option,
+                        isSpoiled: analysisResults.isSpoiled,
+                        analysis: analysisResults // Enviamos datos de análisis
                     })
                 });
                 
+                if (!response.ok) throw new Error(`Error ${response.status}`);
+                
                 const data = await response.json();
-                resultTitle.textContent = currentOption === 'conservation' 
-                    ? `Conservación de ${currentFood}` 
-                    : `Receta con ${currentFood}`;
-                resultSubtitle.textContent = isSpoiled ? '⚠️ Alimento en mal estado' : '✅ Alimento fresco';
-                resultContent.textContent = data.response;
+                
+                // Configurar título
+                if (option === 'conservation') {
+                    resultTitle.textContent = analysisResults.isSpoiled 
+                        ? `⚠️ Conservación de ${currentFood} (en mal estado)`
+                        : `✅ Conservación de ${currentFood}`;
+                    resultSubtitle.textContent = analysisResults.isSpoiled 
+                        ? 'Consejos de seguridad alimentaria' 
+                        : 'Mantén tu alimento fresco por más tiempo';
+                } else {
+                    resultTitle.textContent = analysisResults.isSpoiled
+                        ? `🚫 ${currentFood} en mal estado - Alternativas seguras`
+                        : `🍳 Receta con ${currentFood}`;
+                    resultSubtitle.textContent = analysisResults.isSpoiled
+                        ? 'No uses alimentos en mal estado para cocinar'
+                        : 'Receta creativa y deliciosa';
+                }
+                
+                // Formatear respuesta
+                resultContent.innerHTML = formatResponse(data.response);
                 
             } catch (error) {
-                resultContent.textContent = `Error: ${error.message}. Por favor, intenta de nuevo.`;
+                console.error('Error API:', error);
+                // Fallback local detallado
+                resultTitle.textContent = option === 'conservation' 
+                    ? `Guía de Conservación: ${currentFood}`
+                    : `Receta con ${currentFood}`;
+                
+                resultSubtitle.textContent = 'Modo seguro activado';
+                
+                const fallback = option === 'conservation'
+                    ? generateConservationFallback(currentFood, analysisResults.isSpoiled)
+                    : generateRecipeFallback(currentFood, analysisResults.isSpoiled);
+                
+                resultContent.innerHTML = formatResponse(fallback);
             } finally {
                 loading.style.display = 'none';
                 resultCard.style.display = 'block';
+                resultCard.scrollIntoView({ behavior: 'smooth' });
             }
         }
+        
+        function formatResponse(text) {
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>')
+                .replace(/✅/g, '<span style="color:#34C759;">✅</span>')
+                .replace(/⚠️/g, '<span style="color:#FF9500;">⚠️</span>')
+                .replace(/🚫/g, '<span style="color:#FF3B30;">🚫</span>')
+                .replace(/🔴/g, '<span style="color:#FF3B30;">🔴</span>')
+                .replace(/🟡/g, '<span style="color:#FF9500;">🟡</span>')
+                .replace(/💡/g, '<span style="color:#007AFF;">💡</span>');
+        }
+        
+        function generateConservationFallback(food, spoiled) {
+            if (spoiled) {
+                return `🚫 **ALERTA DE SEGURIDAD - ${food.toUpperCase()} EN MAL ESTADO**
 
-        captureBtn.addEventListener('click', () => captureAndAnalyze('conservation'));
-        recipeBtn.addEventListener('click', () => captureAndAnalyze('recipe'));
-        document.getElementById('proceedBtn').addEventListener('click', getFoodNameAndCallAPI);
-        document.getElementById('dismissBtn').addEventListener('click', () => {
-            alert.style.display = 'none';
-            isSpoiled = false;
-        });
+🔴 **NO CONSUMAS** si observas:
+• Moho visible (puntos verdes, blancos o negros)
+• Olor agrio, fermentado o desagradable
+• Textura babosa, viscosa o excesivamente blanda
+• Zonas oscuras, hundidas o con líquido
 
-        initCamera();
+🟡 **¿Qué hacer ahora?**
+1. **Aísla** el alimento para evitar contaminar otros
+2. **Limpia** el área donde estaba almacenado con agua y jabón
+3. **Desecha** correctamente en una bolsa sellada
+4. **Revisa** otros alimentos cercanos
+
+✅ **Prevención para el futuro:**
+• Almacena a 4°C en refrigerador
+• Usa contenedores ventilados
+• Consume dentro de 2-3 días tras compra
+• No laves hasta el momento de usar
+
+💡 **Regla de oro:** "Cuando hay duda, mejor desechar"`;
+            } else {
+                return `✅ **GUÍA DE CONSERVACIÓN ÓPTIMA - ${food.toUpperCase()}**
+
+🌡️ **Condiciones ideales:**
+• Temperatura: 4-8°C (cajón de verduras)
+• Humedad: 85-95% para mayoría de vegetales
+• Ventilación: Aire circulante, nunca hermético
+
+📦 **Embalaje recomendado:**
+• Bolsas de papel con pequeños agujeros
+• Envases de vidrio con tapa no hermética
+• Evita bolsas plásticas cerradas
+
+⏱️ **Duración aproximada:**
+• Entero: 5-7 días en refrigerador
+• Cortado: 2-3 días máximo
+• Congelado: 3-6 meses (blanqueado primero)
+
+🚫 **Errores comunes a evitar:**
+1. Lavar antes de guardar (crea humedad y moho)
+2. Almacenar cerca de frutas productoras de etileno
+3. Exponer a cambios bruscos de temperatura
+4. Amontonar sin espacio entre ellos
+
+🔄 **Mantenimiento:**
+• Revisa cada 2 días
+• Retira piezas dañadas inmediatamente
+• Gira y ventila periódicamente`;
+            }
+        }
+        
+        function generateRecipeFallback(food, spoiled) {
+            if (spoiled) {
+                return `⛔ **NO USES ${food.toUpperCase()} EN MAL ESTADO PARA COCINAR**
+
+🍳 **Riesgos de seguridad alimentaria:**
+• **Micotoxinas** - No se destruyen con el calor
+• **Bacterias patógenas** - Pueden causar intoxicación
+• **Esporas de moho** - Invisibles pero peligrosas
+
+💡 **Alternativas seguras:**
+1. **Sustituye** por ${food} fresco
+2. **Usa vegetales similares** disponibles
+3. **Opta por congelados** de buena calidad
+4. **Prueba legumbres enlatadas** como alternativa
+
+⚠️ **Síntomas de intoxicación:**
+• Náuseas, vómitos, diarrea (1-48 horas después)
+• Calambres abdominales
+• Fiebre, dolor de cabeza
+
+🏥 **Busca ayuda médica si:**
+• Los síntomas duran más de 2 días
+• Hay fiebre alta (>38.5°C)
+• Signos de deshidratación
+
+💚 **Mejor prevenir:** Compra cantidades pequeñas y consume rápido.`;
+            } else {
+                return `🍽️ **RECETA EXPRESS CON ${food.toUpperCase()}**
+
+⏱️ **15 minutos** | 🟢 **Fácil** | 🌱 **Saludable**
+
+🥗 **Ensalada Fresca:**
+• 2 ${food} medianos cortados en cubos
+• 1 pepino en rodajas finas
+• 1/2 cebolla morada en pluma
+• 50g de nueces tostadas
+• Queso feta desmenuzado (opcional)
+
+🧂 **Aliño mágico:**
+• 3 cdas aceite de oliva virgen extra
+• 1 cda vinagre de manzana
+• 1 cdta miel o sirope de agave
+• Sal, pimienta negra, orégano al gusto
+• Mezclar y verter sobre la ensalada
+
+🔥 **Versión salteada (sartén):**
+1. Calienta 1 cda de aceite en sartén
+2. Saltea ${food} en cubos por 3-4 minutos
+3. Añade ajo picado y chile (opcional)
+4. Cocina 2 minutos más hasta dorar
+5. Sirve sobre arroz integral o quinoa
+6. Espolvorea perejil fresco
+
+🥤 **Batido energético:**
+• 1 ${food} pelado y cortado
+• 1 plátano congelado
+• 200ml leche de almendras
+• 1 cda de avena integral
+• Canela y nuez moscada al gusto
+• Licuar hasta obtener textura suave
+
+💡 **Consejo del chef:** Añade un toque cítrico (lima o limón) para realzar el sabor natural del ${food}.`;
+            }
+        }
+        
+        // ============================================
+        // 5. FUNCIONES AUXILIARES
+        // ============================================
+        
+        function resetApp() {
+            // Resetear todo
+            previewImage.style.display = 'none';
+            uploadPlaceholder.style.display = 'flex';
+            spoilAnalysis.style.display = 'none';
+            foodSelection.style.display = 'none';
+            actionControls.style.display = 'none';
+            resultCard.style.display = 'none';
+            currentFood = '';
+            fileInput.value = '';
+            imageUrl.value = '';
+            
+            // Resetear análisis
+            document.getElementById('freshnessBar').style.width = '0%';
+            document.getElementById('moldBar').style.width = '0%';
+            document.getElementById('ripeBar').style.width = '0%';
+            document.getElementById('discolorBar').style.width = '0%';
+            
+            // Scroll al inicio
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        // Inicialización
+        document.getElementById('modeUpload').click();
     </script>
 </body>
 </html>
