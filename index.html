@@ -1128,95 +1128,132 @@
         document.getElementById('recipeBtn').addEventListener('click', () => callAPI('recipe'));
         document.getElementById('rescanBtn').addEventListener('click', resetApp);
         
-        async function callAPI(option) {
-            if (!currentFood) {
-                alert('Por favor, selecciona o escribe el nombre del alimento');
-                return;
-            }
-            
-            loading.style.display = 'flex';
-            actionControls.style.display = 'none';
-            resultCard.style.display = 'none';
-            
-            try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        food: currentFood,
-                        option: option,
-                        isSpoiled: analysisResults.isSpoiled,
-                        analysis: analysisResults
-                    })
-                });
-                
-                if (!response.ok) throw new Error(`Error ${response.status}`);
-                
-                const data = await response.json();
-                
-                // Validar respuesta
-                let responseText = '';
-                let source = 'fallback';
-                
-                if (data && data.response && typeof data.response === 'string') {
-                    responseText = data.response;
-                    source = data.source || 'api';
-                } else {
-                    responseText = option === 'conservation'
-                        ? generateConservationFallback(currentFood, analysisResults.isSpoiled)
-                        : generateRecipeFallback(currentFood, analysisResults.isSpoiled);
-                }
-                
-                // Configurar título
-                if (option === 'conservation') {
-                    resultTitle.textContent = analysisResults.isSpoiled 
-                        ? `⚠️ Conservación de ${currentFood}`
-                        : `✅ Conservación de ${currentFood}`;
-                    resultSubtitle.textContent = source === 'api' 
-                        ? 'Recomendaciones por IA' 
-                        : 'Recomendaciones de seguridad';
-                } else {
-                    resultTitle.textContent = analysisResults.isSpoiled
-                        ? `🚫 ${currentFood} - Precaución`
-                        : `🍳 Receta con ${currentFood}`;
-                    resultSubtitle.textContent = source === 'api'
-                        ? 'Receta generada por IA'
-                        : 'Receta de respaldo';
-                }
-                
-                // Añadir badge de fuente
-                if (source === 'api') {
-                    resultTitle.innerHTML += ' <span style="background:#10B981;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">IA</span>';
-                } else {
-                    resultTitle.innerHTML += ' <span style="background:#6B7280;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">Modo Seguro</span>';
-                }
-                
-                // Formatear respuesta
-                resultContent.innerHTML = formatResponse(responseText);
-                
-            } catch (error) {
-                console.error('Error API:', error);
-                
-                // Fallback local
-                resultTitle.textContent = option === 'conservation' 
-                    ? `Guía de Conservación: ${currentFood}`
-                    : `Receta con ${currentFood}`;
-                
-                resultSubtitle.textContent = 'Modo seguro activado';
-                
-                const fallback = option === 'conservation'
-                    ? generateConservationFallback(currentFood, analysisResults.isSpoiled)
-                    : generateRecipeFallback(currentFood, analysisResults.isSpoiled);
-                
-                resultContent.innerHTML = formatResponse(fallback);
-            } finally {
-                loading.style.display = 'none';
-                resultCard.style.display = 'block';
-                setTimeout(() => {
-                    resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 100);
-            }
+async function callAPI(option) {
+    if (!currentFood) {
+        alert('Por favor, selecciona o escribe el nombre del alimento');
+        return;
+    }
+    
+    loading.style.display = 'flex';
+    actionControls.style.display = 'none';
+    resultCard.style.display = 'none';
+    
+    // Mostrar estado de conexión IA
+    loading.innerHTML = `
+        <div class="spinner"></div>
+        <h3>Conectando con Inteligencia Artificial</h3>
+        <p>Probando 5 modelos diferentes de HuggingFace...</p>
+        <div id="modelStatus" style="font-size: 14px; color: #6B7280; margin-top: 10px;">
+            <i class="fas fa-sync-alt fa-spin"></i> Iniciando conexión...
+        </div>
+    `;
+    
+    console.log('🚀 Conectando con HuggingFace (5 modelos)...');
+    
+    // Simular actualización de estado de modelos
+    const modelos = [
+        'Qwen/Qwen2.5-7B-Instruct',
+        'Mistral-7B-Instruct',
+        'Zephyr-7B-beta', 
+        'FLAN-T5-XXL',
+        'DialoGPT-medium'
+    ];
+    
+    let modeloIndex = 0;
+    const statusInterval = setInterval(() => {
+        if (modeloIndex < modelos.length) {
+            document.getElementById('modelStatus').innerHTML = 
+                `<i class="fas fa-microchip"></i> Probando modelo: ${modelos[modeloIndex]}`;
+            modeloIndex++;
         }
+    }, 1000);
+    
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                food: currentFood,
+                option: option,
+                isSpoiled: analysisResults.isSpoiled
+            })
+        });
+        
+        clearInterval(statusInterval);
+        
+        const data = await response.json();
+        console.log('📊 Respuesta completa:', data);
+        
+        // CASO 1: IA funcionó
+        if (data.success && data.response && data.response.length > 20) {
+            console.log(`✅ IA funcionó con modelo: ${data.model || 'desconocido'}`);
+            
+            const emoji = option === 'conservation' 
+                ? (analysisResults.isSpoiled ? '⚠️' : '✅')
+                : (analysisResults.isSpoiled ? '🚫' : '🍳');
+            
+            const modelName = data.model ? data.model.split('/')[0] : 'IA';
+            const modelBadge = `<span style="background:#10B981;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">🤖 ${modelName}</span>`;
+            
+            resultTitle.innerHTML = `${emoji} ${option === 'conservation' ? 'Consejos' : 'Receta'} ${modelBadge}`;
+            resultSubtitle.textContent = `Generado por ${data.model || 'inteligencia artificial'}`;
+            resultContent.innerHTML = formatResponse(data.response);
+            
+            // Mostrar éxito en consola
+            document.getElementById('modelStatus').innerHTML = 
+                `<i class="fas fa-check-circle" style="color:#10B981"></i> ¡IA funcionó con ${modelName}!`;
+        }
+        // CASO 2: IA falló
+        else {
+            console.log('⚠️ IA falló, usando base local');
+            
+            const fallbackResponse = option === 'conservation'
+                ? generateConservationFallback(currentFood, analysisResults.isSpoiled)
+                : generateRecipeFallback(currentFood, analysisResults.isSpoiled);
+            
+            const emoji = option === 'conservation' 
+                ? (analysisResults.isSpoiled ? '⚠️' : '✅')
+                : (analysisResults.isSpoiled ? '🚫' : '🍳');
+            
+            const errorMsg = data.error ? data.error.substring(0, 60) + '...' : 'IA no disponible';
+            
+            resultTitle.innerHTML = `${emoji} ${option === 'conservation' ? 'Consejos' : 'Receta'} <span style="background:#6B7280;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">📚 Base Local</span>`;
+            resultSubtitle.textContent = `${errorMsg}`;
+            resultContent.innerHTML = formatResponse(fallbackResponse);
+            
+            // Mostrar error en consola
+            document.getElementById('modelStatus').innerHTML = 
+                `<i class="fas fa-exclamation-triangle" style="color:#F59E0B"></i> ${errorMsg}`;
+        }
+        
+    } catch (error) {
+        clearInterval(statusInterval);
+        console.error('❌ Error de conexión:', error);
+        
+        // Error de red
+        const fallbackResponse = option === 'conservation'
+            ? generateConservationFallback(currentFood, analysisResults.isSpoiled)
+            : generateRecipeFallback(currentFood, analysisResults.isSpoiled);
+        
+        resultTitle.innerHTML = `${option === 'conservation' ? '✅' : '🍳'} ${currentFood} <span style="background:#F59E0B;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">⚠️ Sin conexión</span>`;
+        resultSubtitle.textContent = 'Modo offline activado';
+        resultContent.innerHTML = formatResponse(fallbackResponse);
+        
+        document.getElementById('modelStatus').innerHTML = 
+            `<i class="fas fa-wifi-slash" style="color:#EF4444"></i> Error de conexión`;
+        
+    } finally {
+        loading.style.display = 'none';
+        resultCard.style.display = 'block';
+        
+        setTimeout(() => {
+            resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    }
+}
         
         function formatResponse(text) {
             if (typeof text !== 'string') {
