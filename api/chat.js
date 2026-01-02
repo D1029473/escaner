@@ -1,230 +1,279 @@
+import { HfInference } from '@huggingface/inference';
+
+// Configuración
+const HF_TOKEN = process.env.HF_TOKEN;
+
+// Lista de modelos en orden de prioridad
+const MODELOS_PRIORIDAD = [
+  {
+    nombre: 'Qwen/Qwen2.5-7B-Instruct',
+    descripcion: 'Principal - Buen equilibrio',
+    formato: 'chatml'
+  },
+  {
+    nombre: 'mistralai/Mistral-7B-Instruct-v0.2',
+    descripcion: 'Alternativa rápida',
+    formato: 'llama2'
+  },
+  {
+    nombre: 'HuggingFaceH4/zephyr-7b-beta',
+    descripcion: 'Optimizado para chat',
+    formato: 'chatml'
+  },
+  {
+    nombre: 'google/flan-t5-xxl',
+    descripcion: 'Rápido y confiable',
+    formato: 'simple'
+  },
+  {
+    nombre: 'microsoft/DialoGPT-medium',
+    descripcion: 'Pequeño y eficiente',
+    formato: 'dialogue'
+  }
+];
+
 export default async function handler(req, res) {
-  console.log('🚀 API Iniciada');
+  console.log('🤖 API Iniciada - Método:', req.method);
   
-  // Headers CORS importantes
+  // Headers CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
+  // Manejar preflight
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
   
+  // Solo POST
   if (req.method !== 'POST') {
     return res.status(405).json({ 
-      success: false,
-      error: 'Método no permitido'
+      success: false, 
+      error: 'Método no permitido. Use POST.' 
     });
   }
 
   try {
     const { food, option, isSpoiled } = req.body;
     
+    // Validación básica
     if (!food || !option) {
       return res.status(400).json({ 
-        success: false,
-        error: 'Faltan campos obligatorios'
+        success: false, 
+        error: 'Faltan campos obligatorios: food y option' 
       });
     }
 
     console.log('📥 Datos recibidos:', { food, option, isSpoiled });
-
+    
     // ============================================
-    // INTENTO 1: HuggingFace IA REAL
+    // VERIFICACIÓN DEL TOKEN
     // ============================================
-    let aiResponse = null;
-    let aiError = null;
-    let usedFallback = false;
-    
-    const HF_TOKEN = process.env.HF_TOKEN;
-    console.log('🔑 HF_TOKEN presente?:', HF_TOKEN ? 'Sí (longitud: ' + HF_TOKEN.length + ')' : 'No');
-    
-    // MODELOS DISPONIBLES (por orden de preferencia)
-    const MODELS = [
-      'mistralai/Mistral-7B-Instruct-v0.2',  // Muy estable
-      'HuggingFaceH4/zephyr-7b-beta',        // Alternativa buena
-      'google/flan-t5-xxl',                   // Modelo más ligero
-      'Qwen/Qwen2.5-7B-Instruct'             // Última opción
-    ];
-    
-    if (HF_TOKEN && HF_TOKEN.length > 10) {
-      console.log('🤖 Intentando HuggingFace con token...');
-      
-      for (const MODEL of MODELS) {
-        try {
-          console.log(`🔄 Probando modelo: ${MODEL}`);
-          
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 45000); // 45 segundos
-          
-          // Construir prompt según modelo
-          let prompt = '';
-          if (MODEL.includes('mistral') || MODEL.includes('zephyr')) {
-            // Formato para modelos instruct
-            prompt = `<s>[INST] ${option === 'conservation' 
-              ? (isSpoiled 
-                ? `El usuario reporta que su ${food} está en mal estado. Proporciona consejos de seguridad sobre si se puede salvar y cómo prevenir deterioro futuro.` 
-                : `Proporciona consejos prácticos para conservar ${food} fresco por más tiempo.`)
-              : (isSpoiled 
-                ? `El usuario reporta que su ${food} está en mal estado. Explica por qué no se debe cocinar con alimentos en mal estado y da alternativas seguras.` 
-                : `Proporciona una receta creativa, deliciosa y fácil usando ${food}.`)
-            } [/INST]`;
-          } else {
-            // Formato genérico
-            prompt = option === 'conservation'
-              ? (isSpoiled 
-                ? `Consejos de seguridad para ${food} en mal estado: `
-                : `Cómo conservar ${food} fresco: `)
-              : (isSpoiled 
-                ? `Alternativas seguras para ${food} en mal estado: `
-                : `Receta con ${food}: `);
-          }
-          
-          console.log('📝 Prompt:', prompt.substring(0, 150) + '...');
-          
-          const hfResponse = await fetch(
-            `https://api-inference.huggingface.co/models/${MODEL}`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${HF_TOKEN}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                inputs: prompt,
-                parameters: {
-                  max_new_tokens: 350,
-                  temperature: 0.8,
-                  top_p: 0.95,
-                  repetition_penalty: 1.1,
-                  return_full_text: false
-                }
-              }),
-              signal: controller.signal
-            }
-          );
-          
-          clearTimeout(timeout);
-          
-          console.log('📡 Respuesta HTTP:', {
-            modelo: MODEL,
-            status: hfResponse.status,
-            statusText: hfResponse.statusText,
-            ok: hfResponse.ok
-          });
-          
-          if (hfResponse.ok) {
-            const data = await hfResponse.json();
-            console.log('📊 Respuesta JSON:', JSON.stringify(data).substring(0, 300));
-            
-            // Extraer texto de diferentes formatos
-            if (Array.isArray(data) && data[0] && data[0].generated_text) {
-              aiResponse = data[0].generated_text;
-            } else if (data.generated_text) {
-              aiResponse = data.generated_text;
-            } else if (data[0] && data[0].generated_text) {
-              aiResponse = data[0].generated_text;
-            } else if (typeof data === 'string') {
-              aiResponse = data;
-            } else {
-              console.log('ℹ️ Formato no reconocido, intentando extraer...');
-              aiResponse = JSON.stringify(data);
-            }
-            
-            if (aiResponse && aiResponse.length > 20) {
-              console.log(`✅ Modelo ${MODEL} funcionó! Longitud: ${aiResponse.length}`);
-              break; // Salir del loop, encontramos modelo que funciona
-            } else {
-              console.log(`⚠️ Modelo ${MODEL} respondió muy corto: ${aiResponse?.length || 0} chars`);
-              aiResponse = null;
-            }
-          } else {
-            const errorText = await hfResponse.text().catch(() => 'No error body');
-            console.log(`❌ Modelo ${MODEL} falló: ${hfResponse.status} - ${errorText.substring(0, 100)}`);
-            // Continuar al siguiente modelo
-          }
-          
-        } catch (hfError) {
-          console.log(`⚠️ Error con modelo ${MODEL}:`, hfError.message);
-          // Continuar al siguiente modelo
-        }
-      }
-      
-      if (!aiResponse) {
-        aiError = 'Todos los modelos fallaron';
-        console.log('💥 Todos los modelos de HuggingFace fallaron');
-      }
-      
-    } else {
-      aiError = 'No HF_TOKEN configurado';
-      console.log('ℹ️ Sin token HF, usando fallback directo');
+    if (!HF_TOKEN) {
+      console.error('❌ ERROR: HF_TOKEN no configurado en Vercel');
+      return res.status(200).json({
+        success: false,
+        response: "",
+        source: 'no_token',
+        error: 'Token de HuggingFace no configurado',
+        debug: { instruction: 'use_frontend_fallback' }
+      });
     }
-
-    // ============================================
-    // DECISIÓN: ¿Qué enviar al frontend?
-    // ============================================
-    console.log('🔄 Estado final:', {
-      tieneAiResponse: !!aiResponse,
-      longitud: aiResponse?.length || 0,
-      tieneError: !!aiError
-    });
     
-    // CASO 1: Tenemos respuesta de IA válida
-    if (aiResponse && aiResponse.length > 30) {
-      console.log('📤 Enviando respuesta IA al frontend');
-      
-      // Limpiar respuesta si es necesario
-      const cleanResponse = aiResponse
-        .replace(/<\|.*?\|>/g, '')
-        .replace(/\[INST\].*?\[\/INST\]/g, '')
-        .replace(/\\n/g, '\n')
-        .trim();
+    console.log('✅ Token HF presente (longitud:', HF_TOKEN.length, ')');
+    
+    // ============================================
+    // INTENTAR CON MÚLTIPLES MODELOS
+    // ============================================
+    let respuestaFinal = null;
+    let modeloUsado = null;
+    let errores = [];
+    
+    const hf = new HfInference(HF_TOKEN);
+    
+    for (const modelo of MODELOS_PRIORIDAD) {
+      try {
+        console.log(`🔄 Probando modelo: ${modelo.nombre} (${modelo.descripcion})`);
+        
+        // Construir prompt según el formato del modelo
+        const prompt = construirPrompt(modelo.formato, food, option, isSpoiled);
+        
+        console.log(`📝 Prompt para ${modelo.nombre}: ${prompt.substring(0, 100)}...`);
+        
+        const inicio = Date.now();
+        
+        const response = await hf.textGeneration({
+          model: modelo.nombre,
+          inputs: prompt,
+          parameters: {
+            max_new_tokens: 400,
+            temperature: 0.7,
+            top_p: 0.9,
+            repetition_penalty: 1.1,
+            return_full_text: false
+          }
+        }, {
+          use_cache: true,
+          wait_for_model: true,
+          timeout: 30000 // 30 segundos por modelo
+        });
+        
+        const tiempo = Date.now() - inicio;
+        console.log(`⏱️ ${modelo.nombre} respondió en ${tiempo}ms`);
+        
+        if (response && response.generated_text) {
+          let textoLimpio = limpiarRespuesta(response.generated_text, modelo.formato);
+          
+          // Validar que la respuesta sea útil
+          if (esRespuestaValida(textoLimpio)) {
+            console.log(`✅ ${modelo.nombre} funcionó! Longitud: ${textoLimpio.length} chars`);
+            respuestaFinal = textoLimpio;
+            modeloUsado = modelo.nombre;
+            break; // ¡Éxito! Salimos del loop
+          } else {
+            console.log(`⚠️ ${modelo.nombre} respondió inválido: "${textoLimpio.substring(0, 50)}"`);
+            errores.push(`${modelo.nombre}: respuesta inválida`);
+          }
+        }
+        
+      } catch (modeloError) {
+        console.log(`❌ ${modelo.nombre} falló:`, modeloError.message);
+        errores.push(`${modelo.nombre}: ${modeloError.message}`);
+        // Continuar con el siguiente modelo
+      }
+    }
+    
+    // ============================================
+    // EVALUAR RESULTADOS
+    // ============================================
+    if (respuestaFinal && modeloUsado) {
+      // ¡ÉXITO! Tenemos respuesta de IA
+      console.log(`🎉 IA funcionó con ${modeloUsado}`);
       
       return res.status(200).json({
         success: true,
-        response: cleanResponse,
-        source: 'huggingface',
+        response: respuestaFinal,
+        source: 'huggingface_ai',
+        model: modeloUsado,
         debug: {
           timestamp: new Date().toISOString(),
           food,
           option,
           isSpoiled,
-          responseLength: cleanResponse.length,
-          modelUsed: 'varios_intentados'
+          responseLength: respuestaFinal.length,
+          modelsTried: MODELOS_PRIORIDAD.length,
+          errors: errores
+        }
+      });
+      
+    } else {
+      // TODOS los modelos fallaron
+      console.error('💥 Todos los modelos fallaron');
+      
+      return res.status(200).json({
+        success: false,
+        response: "",
+        source: 'all_models_failed',
+        error: 'Todos los modelos de IA fallaron',
+        debug: {
+          timestamp: new Date().toISOString(),
+          errors: errores,
+          modelsTried: MODELOS_PRIORIDAD.length,
+          instruction: 'use_frontend_fallback'
         }
       });
     }
     
-    // CASO 2: No hay IA, enviar señal para usar base de datos frontend
-    console.log('🎯 Enviando señal para usar base de datos local del frontend');
+  } catch (error) {
+    console.error('💥 ERROR GENERAL en API:', error.message);
     
     return res.status(200).json({
-      success: true,
-      response: "", // Vacío para que frontend use su base
-      source: 'frontend_fallback',
+      success: false,
+      response: "",
+      source: 'api_error',
+      error: error.message,
       debug: {
         timestamp: new Date().toISOString(),
-        food,
-        option,
-        isSpoiled,
-        hfError: aiError || 'No se obtuvo respuesta de IA',
-        instruction: 'use_frontend_database'
-      }
-    });
-
-  } catch (error) {
-    console.error('💥 ERROR CRÍTICO en API:', error.message, error.stack);
-    
-    // Error crítico pero siempre respondemos
-    return res.status(200).json({
-      success: true,
-      response: "",
-      source: 'emergency_fallback',
-      error: error.message,
-      debug: { 
-        emergency: true,
-        instruction: 'use_frontend_database' 
+        instruction: 'use_frontend_fallback'
       }
     });
   }
+}
+
+// ============================================
+// FUNCIONES AUXILIARES
+// ============================================
+
+function construirPrompt(formato, food, option, isSpoiled) {
+  let systemPrompt, userPrompt;
+  
+  if (option === 'conservation') {
+    if (isSpoiled) {
+      systemPrompt = `Eres un experto en seguridad alimentaria. El ${food} del usuario está en mal estado. Proporciona consejos PRÁCTICOS de seguridad en español.`;
+      userPrompt = `Mi ${food} muestra signos de deterioro. ¿Qué debo hacer?`;
+    } else {
+      systemPrompt = `Eres un especialista en conservación de alimentos. Da consejos PRÁCTICOS para conservar ${food} fresco en español.`;
+      userPrompt = `¿Cómo conservo ${food} fresco por más tiempo?`;
+    }
+  } else {
+    if (isSpoiled) {
+      systemPrompt = `Eres un chef y experto en seguridad alimentaria. El ${food} del usuario está en mal estado.`;
+      userPrompt = `Tengo ${food} en mal estado. ¿Es seguro cocinarlo? ¿Alternativas?`;
+    } else {
+      systemPrompt = `Eres un chef creativo. Proporciona una receta DELICIOSA y FÁCIL usando ${food} en español.`;
+      userPrompt = `Dame una receta con ${food}`;
+    }
+  }
+  
+  // Formatear según el tipo de modelo
+  switch(formato) {
+    case 'chatml':
+      return `<|im_start|>system
+${systemPrompt}<|im_end|>
+<|im_start|>user
+${userPrompt}<|im_end|>
+<|im_start|>assistant
+`;
+    
+    case 'llama2':
+      return `<s>[INST] <<SYS>>
+${systemPrompt}
+<</SYS>>
+
+${userPrompt} [/INST]`;
+    
+    case 'dialogue':
+      return `System: ${systemPrompt}\nHuman: ${userPrompt}\nAI:`;
+    
+    default:
+      return `${systemPrompt}\n\nPregunta: ${userPrompt}\nRespuesta:`;
+  }
+}
+
+function limpiarRespuesta(texto, formato) {
+  // Limpiar según formato
+  let limpio = texto
+    .replace(/<\|im_start\|>/g, '')
+    .replace(/<\|im_end\|>/g, '')
+    .replace(/assistant:/gi, '')
+    .replace(/system:/gi, '')
+    .replace(/user:/gi, '')
+    .replace(/\[INST\].*?\[\/INST\]/g, '')
+    .replace(/<<SYS>>.*?<</SYS>>/g, '')
+    .replace(/\\n/g, '\n')
+    .trim();
+  
+  // Eliminar líneas vacías al inicio
+  return limpio.replace(/^\s*\n+/g, '');
+}
+
+function esRespuestaValida(texto) {
+  if (!texto) return false;
+  if (texto.length < 20) return false;
+  if (texto.includes('Loading') || texto.includes('loading')) return false;
+  if (texto.includes('model is currently loading')) return false;
+  if (texto.includes('timeout')) return false;
+  if (texto.includes('error')) return false;
+  
+  return true;
 }
