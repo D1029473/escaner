@@ -1175,7 +1175,7 @@
                 clearInterval(statusInterval);
                 
                 const data = await response.json();
-                console.log('📊 Respuesta completa:', data);
+                console.log('📊 Respuesta completa:', JSON.stringify(data, null, 2));
                 
                 // CASO 1: IA funcionó
                 if (data.success && data.response && data.response.length > 20) {
