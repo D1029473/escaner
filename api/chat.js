@@ -1,39 +1,5 @@
-import { HfInference } from '@huggingface/inference';
-
-// Configuración
-const HF_TOKEN = process.env.HF_TOKEN;
-
-// Lista de modelos en orden de prioridad
-const MODELOS_PRIORIDAD = [
-  {
-    nombre: 'Qwen/Qwen2.5-7B-Instruct',
-    descripcion: 'Principal - Buen equilibrio',
-    formato: 'chatml'
-  },
-  {
-    nombre: 'mistralai/Mistral-7B-Instruct-v0.2',
-    descripcion: 'Alternativa rápida',
-    formato: 'llama2'
-  },
-  {
-    nombre: 'HuggingFaceH4/zephyr-7b-beta',
-    descripcion: 'Optimizado para chat',
-    formato: 'chatml'
-  },
-  {
-    nombre: 'google/flan-t5-xxl',
-    descripcion: 'Rápido y confiable',
-    formato: 'simple'
-  },
-  {
-    nombre: 'microsoft/DialoGPT-medium',
-    descripcion: 'Pequeño y eficiente',
-    formato: 'dialogue'
-  }
-];
-
 export default async function handler(req, res) {
-  console.log('🤖 API Iniciada - Método:', req.method);
+  console.log('🤖 Save & Taste API Iniciada');
   
   // Headers CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -49,7 +15,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ 
       success: false, 
-      error: 'Método no permitido. Use POST.' 
+      error: 'Método no permitido' 
     });
   }
 
@@ -60,7 +26,7 @@ export default async function handler(req, res) {
     if (!food || !option) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Faltan campos obligatorios: food y option' 
+        error: 'Faltan campos obligatorios' 
       });
     }
 
@@ -69,8 +35,10 @@ export default async function handler(req, res) {
     // ============================================
     // VERIFICACIÓN DEL TOKEN
     // ============================================
+    const HF_TOKEN = process.env.HF_TOKEN;
+    
     if (!HF_TOKEN) {
-      console.error('❌ ERROR: HF_TOKEN no configurado en Vercel');
+      console.log('❌ HF_TOKEN no configurado en Vercel');
       return res.status(200).json({
         success: false,
         response: "",
@@ -80,118 +48,125 @@ export default async function handler(req, res) {
       });
     }
     
-    console.log('✅ Token HF presente (longitud:', HF_TOKEN.length, ')');
+    console.log('✅ Token HF presente, intentando IA...');
     
     // ============================================
-    // INTENTAR CON MÚLTIPLES MODELOS
+    // USAR HUGGINGFACE ROUTER (EL QUE SÍ FUNCIONA)
     // ============================================
-    let respuestaFinal = null;
-    let modeloUsado = null;
-    let errores = [];
+    let respuestaIA = null;
     
-    const hf = new HfInference(HF_TOKEN);
-    
-    for (const modelo of MODELOS_PRIORIDAD) {
-      try {
-        console.log(`🔄 Probando modelo: ${modelo.nombre} (${modelo.descripcion})`);
+    try {
+      // Endpoint del router de HuggingFace
+      const endpoint = 'https://router.huggingface.co/hf-inference/models';
+      
+      // Construir prompt
+      const prompt = construirPrompt(food, option, isSpoiled);
+      
+      console.log('📝 Prompt:', prompt);
+      
+      // Construir payload para el router
+      const payload = {
+        model: 'Qwen/Qwen2.5-7B-Instruct',
+        inputs: prompt,
+        parameters: {
+          max_new_tokens: 400,
+          temperature: 0.7,
+          top_p: 0.9,
+          repetition_penalty: 1.1
+        }
+      };
+      
+      console.log('📤 Enviando a HuggingFace Router...');
+      
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000); // 45 segundos
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${HF_TOKEN}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeout);
+      
+      console.log('📥 Respuesta HTTP:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Router respondió correctamente');
         
-        // Construir prompt según el formato del modelo
-        const prompt = construirPrompt(modelo.formato, food, option, isSpoiled);
-        
-        console.log(`📝 Prompt para ${modelo.nombre}: ${prompt.substring(0, 100)}...`);
-        
-        const inicio = Date.now();
-        
-        const response = await hf.textGeneration({
-          model: modelo.nombre,
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: 400,
-            temperature: 0.7,
-            top_p: 0.9,
-            repetition_penalty: 1.1,
-            return_full_text: false
-          }
-        }, {
-          use_cache: true,
-          wait_for_model: true,
-          timeout: 30000 // 30 segundos por modelo
-        });
-        
-        const tiempo = Date.now() - inicio;
-        console.log(`⏱️ ${modelo.nombre} respondió en ${tiempo}ms`);
-        
-        if (response && response.generated_text) {
-          let textoLimpio = limpiarRespuesta(response.generated_text, modelo.formato);
-          
-          // Validar que la respuesta sea útil
-          if (esRespuestaValida(textoLimpio)) {
-            console.log(`✅ ${modelo.nombre} funcionó! Longitud: ${textoLimpio.length} chars`);
-            respuestaFinal = textoLimpio;
-            modeloUsado = modelo.nombre;
-            break; // ¡Éxito! Salimos del loop
-          } else {
-            console.log(`⚠️ ${modelo.nombre} respondió inválido: "${textoLimpio.substring(0, 50)}"`);
-            errores.push(`${modelo.nombre}: respuesta inválida`);
-          }
+        // Extraer texto de la respuesta del router
+        if (Array.isArray(data) && data[0] && data[0].generated_text) {
+          respuestaIA = data[0].generated_text;
+        } else if (data.generated_text) {
+          respuestaIA = data.generated_text;
+        } else if (typeof data === 'string') {
+          respuestaIA = data;
+        } else if (data[0] && typeof data[0] === 'string') {
+          respuestaIA = data[0];
         }
         
-      } catch (modeloError) {
-        console.log(`❌ ${modelo.nombre} falló:`, modeloError.message);
-        errores.push(`${modelo.nombre}: ${modeloError.message}`);
-        // Continuar con el siguiente modelo
+        if (respuestaIA) {
+          console.log('🎯 IA funcionó, longitud:', respuestaIA.length);
+        } else {
+          console.log('⚠️ No se pudo extraer respuesta de IA');
+        }
+      } else {
+        const errorText = await response.text().catch(() => '');
+        console.log('❌ Router error:', response.status, errorText.substring(0, 100));
       }
+      
+    } catch (routerError) {
+      console.log('⚠️ Error en router:', routerError.message);
     }
     
     // ============================================
-    // EVALUAR RESULTADOS
+    // DECIDIR QUÉ RESPONDER
     // ============================================
-    if (respuestaFinal && modeloUsado) {
-      // ¡ÉXITO! Tenemos respuesta de IA
-      console.log(`🎉 IA funcionó con ${modeloUsado}`);
+    if (respuestaIA && respuestaIA.length > 30) {
+      console.log('📤 Enviando respuesta IA al frontend');
+      
+      // Limpiar respuesta
+      const respuestaLimpia = limpiarRespuesta(respuestaIA);
       
       return res.status(200).json({
         success: true,
-        response: respuestaFinal,
+        response: respuestaLimpia,
         source: 'huggingface_ai',
-        model: modeloUsado,
+        model: 'Qwen2.5-via-Router',
         debug: {
           timestamp: new Date().toISOString(),
-          food,
-          option,
-          isSpoiled,
-          responseLength: respuestaFinal.length,
-          modelsTried: MODELOS_PRIORIDAD.length,
-          errors: errores
+          responseLength: respuestaLimpia.length
         }
       });
-      
     } else {
-      // TODOS los modelos fallaron
-      console.error('💥 Todos los modelos fallaron');
+      console.log('🎯 IA no disponible, señalando fallback');
       
       return res.status(200).json({
         success: false,
         response: "",
-        source: 'all_models_failed',
-        error: 'Todos los modelos de IA fallaron',
+        source: 'huggingface_failed',
+        error: 'No se pudo conectar con IA',
         debug: {
           timestamp: new Date().toISOString(),
-          errors: errores,
-          modelsTried: MODELOS_PRIORIDAD.length,
           instruction: 'use_frontend_fallback'
         }
       });
     }
     
   } catch (error) {
-    console.error('💥 ERROR GENERAL en API:', error.message);
+    console.error('💥 ERROR en API:', error.message);
     
     return res.status(200).json({
       success: false,
       response: "",
       source: 'api_error',
-      error: error.message,
+      error: String(error.message),
       debug: {
         timestamp: new Date().toISOString(),
         instruction: 'use_frontend_fallback'
@@ -204,76 +179,28 @@ export default async function handler(req, res) {
 // FUNCIONES AUXILIARES
 // ============================================
 
-function construirPrompt(formato, food, option, isSpoiled) {
-  let systemPrompt, userPrompt;
-  
+function construirPrompt(food, option, isSpoiled) {
   if (option === 'conservation') {
     if (isSpoiled) {
-      systemPrompt = `Eres un experto en seguridad alimentaria. El ${food} del usuario está en mal estado. Proporciona consejos PRÁCTICOS de seguridad en español.`;
-      userPrompt = `Mi ${food} muestra signos de deterioro. ¿Qué debo hacer?`;
+      return `[INST] Eres un experto en seguridad alimentaria. Mi ${food} está en mal estado. ¿Qué debo hacer? ¿Es seguro? ¿Cómo prevenir? Responde en español de forma clara y práctica. [/INST]`;
     } else {
-      systemPrompt = `Eres un especialista en conservación de alimentos. Da consejos PRÁCTICOS para conservar ${food} fresco en español.`;
-      userPrompt = `¿Cómo conservo ${food} fresco por más tiempo?`;
+      return `[INST] Eres un especialista en conservación de alimentos. ¿Cómo conservo ${food} fresco por más tiempo? Da consejos prácticos en español. [/INST]`;
     }
   } else {
     if (isSpoiled) {
-      systemPrompt = `Eres un chef y experto en seguridad alimentaria. El ${food} del usuario está en mal estado.`;
-      userPrompt = `Tengo ${food} en mal estado. ¿Es seguro cocinarlo? ¿Alternativas?`;
+      return `[INST] Eres un chef experto en seguridad alimentaria. Tengo ${food} en mal estado. ¿Es seguro cocinar? ¿Qué alternativas sugieres? Responde en español. [/INST]`;
     } else {
-      systemPrompt = `Eres un chef creativo. Proporciona una receta DELICIOSA y FÁCIL usando ${food} en español.`;
-      userPrompt = `Dame una receta con ${food}`;
+      return `[INST] Eres un chef creativo. Dame una receta deliciosa y fácil usando ${food}. Responde en español con ingredientes y pasos. [/INST]`;
     }
   }
-  
-  // Formatear según el tipo de modelo
-  switch(formato) {
-    case 'chatml':
-      return `<|im_start|>system
-${systemPrompt}<|im_end|>
-<|im_start|>user
-${userPrompt}<|im_end|>
-<|im_start|>assistant
-`;
-    
-    case 'llama2':
-      return `<s>[INST] <<SYS>>
-${systemPrompt}
-<</SYS>>
-
-${userPrompt} [/INST]`;
-    
-    case 'dialogue':
-      return `System: ${systemPrompt}\nHuman: ${userPrompt}\nAI:`;
-    
-    default:
-      return `${systemPrompt}\n\nPregunta: ${userPrompt}\nRespuesta:`;
-  }
 }
 
-function limpiarRespuesta(texto, formato) {
-  // Limpiar según formato
-  let limpio = texto
-    .replace(/<\|im_start\|>/g, '')
-    .replace(/<\|im_end\|>/g, '')
-    .replace(/assistant:/gi, '')
-    .replace(/system:/gi, '')
-    .replace(/user:/gi, '')
+function limpiarRespuesta(texto) {
+  if (!texto) return '';
+  
+  return texto
     .replace(/\[INST\].*?\[\/INST\]/g, '')
-    .replace(/<<SYS>>.*?<</SYS>>/g, '')
     .replace(/\\n/g, '\n')
+    .replace(/^\s+/, '')
     .trim();
-  
-  // Eliminar líneas vacías al inicio
-  return limpio.replace(/^\s*\n+/g, '');
-}
-
-function esRespuestaValida(texto) {
-  if (!texto) return false;
-  if (texto.length < 20) return false;
-  if (texto.includes('Loading') || texto.includes('loading')) return false;
-  if (texto.includes('model is currently loading')) return false;
-  if (texto.includes('timeout')) return false;
-  if (texto.includes('error')) return false;
-  
-  return true;
 }
