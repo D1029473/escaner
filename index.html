@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Save & Taste · Dale una segunda vida a tus alimentos</title>
+    <title>Save & Taste · Dale una segunda oportunidad a tus alimentos</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -172,10 +172,10 @@
     <div class="container">
         <header>
             <div class="logo">
-                <i class="fas fa-seedling"></i>
+                <i class="fas fa-recycle"></i>
                 <h1>Save & Taste</h1>
             </div>
-            <p class="tagline">Sube una foto de tu alimento y analizaremos su estado</p>
+            <p class="tagline">Dale una segunda oportunidad a tus alimentos</p>
         </header>
 
         <!-- Modos de entrada -->
@@ -317,10 +317,10 @@
         <!-- Controles de acción -->
         <div class="controls" id="actionControls" style="display: none;">
             <button class="btn btn-success" id="conservationBtn">
-                <i class="fas fa-shield-alt"></i> Consejos de Conservación
+                <i class="fas fa-shield-alt"></i> Conservación
             </button>
             <button class="btn btn-primary" id="recipeBtn">
-                <i class="fas fa-utensils"></i> Generar Receta
+                <i class="fas fa-utensils"></i> Recetas
             </button>
             <button class="btn btn-secondary" id="rescanBtn">
                 <i class="fas fa-redo"></i> Analizar Otro
@@ -836,7 +836,7 @@
         }
 
         // ============================================
-        // RESTO DEL CÓDIGO (MANTENIDO)
+        // RESTO DEL CÓDIGO
         // ============================================
         
         // Elementos DOM
@@ -852,10 +852,6 @@
         const urlInput = document.getElementById('urlInput');
         const imageUrl = document.getElementById('imageUrl');
         
-        // [MANTENGO TODAS LAS FUNCIONES EXISTENTES DESDE AQUÍ...]
-        // initCamera, analyzeSpoilage, processImage, callAPI, formatResponse, etc.
-        // Solo cambian las funciones de fallback que ya actualicé arriba
-
         // Cambiar modo de entrada
         document.querySelectorAll('.mode-card').forEach(card => {
             card.addEventListener('click', function() {
@@ -1128,132 +1124,142 @@
         document.getElementById('recipeBtn').addEventListener('click', () => callAPI('recipe'));
         document.getElementById('rescanBtn').addEventListener('click', resetApp);
         
-async function callAPI(option) {
-    if (!currentFood) {
-        alert('Por favor, selecciona o escribe el nombre del alimento');
-        return;
-    }
-    
-    loading.style.display = 'flex';
-    actionControls.style.display = 'none';
-    resultCard.style.display = 'none';
-    
-    // Mostrar estado de conexión IA
-    loading.innerHTML = `
-        <div class="spinner"></div>
-        <h3>Conectando con Inteligencia Artificial</h3>
-        <p>Probando 5 modelos diferentes de HuggingFace...</p>
-        <div id="modelStatus" style="font-size: 14px; color: #6B7280; margin-top: 10px;">
-            <i class="fas fa-sync-alt fa-spin"></i> Iniciando conexión...
-        </div>
-    `;
-    
-    console.log('🚀 Conectando con HuggingFace (5 modelos)...');
-    
-    // Simular actualización de estado de modelos
-    const modelos = [
-        'Qwen/Qwen2.5-7B-Instruct',
-        'Mistral-7B-Instruct',
-        'Zephyr-7B-beta', 
-        'FLAN-T5-XXL',
-        'DialoGPT-medium'
-    ];
-    
-    let modeloIndex = 0;
-    const statusInterval = setInterval(() => {
-        if (modeloIndex < modelos.length) {
-            document.getElementById('modelStatus').innerHTML = 
-                `<i class="fas fa-microchip"></i> Probando modelo: ${modelos[modeloIndex]}`;
-            modeloIndex++;
+        async function callAPI(option) {
+            if (!currentFood) {
+                alert('Por favor, selecciona o escribe el nombre del alimento');
+                return;
+            }
+            
+            loading.style.display = 'flex';
+            actionControls.style.display = 'none';
+            resultCard.style.display = 'none';
+            
+            // Mostrar estado de conexión IA
+            loading.innerHTML = `
+                <div class="spinner"></div>
+                <h3>Conectando con Inteligencia Artificial</h3>
+                <p>Probando modelos de HuggingFace...</p>
+                <div id="modelStatus" style="font-size: 14px; color: #6B7280; margin-top: 10px;">
+                    <i class="fas fa-sync-alt fa-spin"></i> Iniciando conexión...
+                </div>
+            `;
+            
+            console.log('🚀 Conectando con HuggingFace...');
+            
+            // Simular actualización de estado
+            const modelos = ['Qwen/Qwen2.5', 'Mistral-7B'];
+            let modeloIndex = 0;
+            const statusInterval = setInterval(() => {
+                if (modeloIndex < modelos.length) {
+                    document.getElementById('modelStatus').innerHTML = 
+                        `<i class="fas fa-microchip"></i> Probando: ${modelos[modeloIndex]}`;
+                    modeloIndex++;
+                }
+            }, 1500);
+            
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        food: currentFood,
+                        option: option,
+                        isSpoiled: analysisResults.isSpoiled,
+                        analysis: analysisResults
+                    })
+                });
+                
+                clearInterval(statusInterval);
+                
+                const data = await response.json();
+                console.log('📊 Respuesta completa:', data);
+                
+                // CASO 1: IA funcionó
+                if (data.success && data.response && data.response.length > 20) {
+                    console.log(`✅ IA funcionó con modelo: ${data.model || 'desconocido'}`);
+                    
+                    const emoji = option === 'conservation' 
+                        ? (analysisResults.isSpoiled ? '⚠️' : '✅')
+                        : (analysisResults.isSpoiled ? '🚫' : '🍳');
+                    
+                    const modelName = data.model ? data.model.split('/')[0] : 'IA';
+                    const modelBadge = `<span style="background:#10B981;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">🤖 ${modelName}</span>`;
+                    
+                    resultTitle.innerHTML = `${emoji} ${option === 'conservation' ? 'Consejos de Conservación' : 'Receta Creativa'} ${modelBadge}`;
+                    resultSubtitle.textContent = `Generado por ${data.model || 'inteligencia artificial'}`;
+                    resultContent.innerHTML = formatResponse(data.response);
+                    
+                    // Mostrar éxito
+                    document.getElementById('modelStatus').innerHTML = 
+                        `<i class="fas fa-check-circle" style="color:#10B981"></i> ¡IA funcionó!`;
+                }
+                // CASO 2: IA falló pero API respondió
+                else if (data.success === false) {
+                    console.log('⚠️ IA falló, usando base local');
+                    
+                    const fallbackResponse = option === 'conservation'
+                        ? generateConservationFallback(currentFood, analysisResults.isSpoiled)
+                        : generateRecipeFallback(currentFood, analysisResults.isSpoiled);
+                    
+                    const emoji = option === 'conservation' 
+                        ? (analysisResults.isSpoiled ? '⚠️' : '✅')
+                        : (analysisResults.isSpoiled ? '🚫' : '🍳');
+                    
+                    // FIX: Asegurar que data.error sea string
+                    const errorMsg = data.error ? String(data.error).substring(0, 60) + '...' : 'IA no disponible';
+                    
+                    resultTitle.innerHTML = `${emoji} ${option === 'conservation' ? 'Consejos' : 'Receta'} <span style="background:#6B7280;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">📚 Base Local</span>`;
+                    resultSubtitle.textContent = `${errorMsg}`;
+                    resultContent.innerHTML = formatResponse(fallbackResponse);
+                    
+                    // Mostrar error
+                    document.getElementById('modelStatus').innerHTML = 
+                        `<i class="fas fa-exclamation-triangle" style="color:#F59E0B"></i> ${errorMsg}`;
+                }
+                // CASO 3: Respuesta inesperada
+                else {
+                    console.log('❌ Respuesta inesperada, usando fallback');
+                    
+                    const fallbackResponse = option === 'conservation'
+                        ? generateConservationFallback(currentFood, analysisResults.isSpoiled)
+                        : generateRecipeFallback(currentFood, analysisResults.isSpoiled);
+                    
+                    resultTitle.innerHTML = `${option === 'conservation' ? '✅' : '🍳'} ${currentFood} <span style="background:#F59E0B;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">⚠️ Error</span>`;
+                    resultSubtitle.textContent = 'Respuesta inesperada de la API';
+                    resultContent.innerHTML = formatResponse(fallbackResponse);
+                    
+                    document.getElementById('modelStatus').innerHTML = 
+                        `<i class="fas fa-exclamation-circle" style="color:#EF4444"></i> Error en respuesta API`;
+                }
+                
+            } catch (error) {
+                clearInterval(statusInterval);
+                console.error('❌ Error de conexión:', error);
+                
+                // Error de red
+                const fallbackResponse = option === 'conservation'
+                    ? generateConservationFallback(currentFood, analysisResults.isSpoiled)
+                    : generateRecipeFallback(currentFood, analysisResults.isSpoiled);
+                
+                resultTitle.innerHTML = `${option === 'conservation' ? '✅' : '🍳'} ${currentFood} <span style="background:#F59E0B;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">⚠️ Sin conexión</span>`;
+                resultSubtitle.textContent = 'Modo offline activado';
+                resultContent.innerHTML = formatResponse(fallbackResponse);
+                
+                document.getElementById('modelStatus').innerHTML = 
+                    `<i class="fas fa-wifi-slash" style="color:#EF4444"></i> Error de conexión`;
+                
+            } finally {
+                loading.style.display = 'none';
+                resultCard.style.display = 'block';
+                
+                setTimeout(() => {
+                    resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
         }
-    }, 1000);
-    
-    try {
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                food: currentFood,
-                option: option,
-                isSpoiled: analysisResults.isSpoiled
-            })
-        });
-        
-        clearInterval(statusInterval);
-        
-        const data = await response.json();
-        console.log('📊 Respuesta completa:', data);
-        
-        // CASO 1: IA funcionó
-        if (data.success && data.response && data.response.length > 20) {
-            console.log(`✅ IA funcionó con modelo: ${data.model || 'desconocido'}`);
-            
-            const emoji = option === 'conservation' 
-                ? (analysisResults.isSpoiled ? '⚠️' : '✅')
-                : (analysisResults.isSpoiled ? '🚫' : '🍳');
-            
-            const modelName = data.model ? data.model.split('/')[0] : 'IA';
-            const modelBadge = `<span style="background:#10B981;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">🤖 ${modelName}</span>`;
-            
-            resultTitle.innerHTML = `${emoji} ${option === 'conservation' ? 'Consejos' : 'Receta'} ${modelBadge}`;
-            resultSubtitle.textContent = `Generado por ${data.model || 'inteligencia artificial'}`;
-            resultContent.innerHTML = formatResponse(data.response);
-            
-            // Mostrar éxito en consola
-            document.getElementById('modelStatus').innerHTML = 
-                `<i class="fas fa-check-circle" style="color:#10B981"></i> ¡IA funcionó con ${modelName}!`;
-        }
-        // CASO 2: IA falló
-        else {
-            console.log('⚠️ IA falló, usando base local');
-            
-            const fallbackResponse = option === 'conservation'
-                ? generateConservationFallback(currentFood, analysisResults.isSpoiled)
-                : generateRecipeFallback(currentFood, analysisResults.isSpoiled);
-            
-            const emoji = option === 'conservation' 
-                ? (analysisResults.isSpoiled ? '⚠️' : '✅')
-                : (analysisResults.isSpoiled ? '🚫' : '🍳');
-            
-            const errorMsg = data.error ? data.error.substring(0, 60) + '...' : 'IA no disponible';
-            
-            resultTitle.innerHTML = `${emoji} ${option === 'conservation' ? 'Consejos' : 'Receta'} <span style="background:#6B7280;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">📚 Base Local</span>`;
-            resultSubtitle.textContent = `${errorMsg}`;
-            resultContent.innerHTML = formatResponse(fallbackResponse);
-            
-            // Mostrar error en consola
-            document.getElementById('modelStatus').innerHTML = 
-                `<i class="fas fa-exclamation-triangle" style="color:#F59E0B"></i> ${errorMsg}`;
-        }
-        
-    } catch (error) {
-        clearInterval(statusInterval);
-        console.error('❌ Error de conexión:', error);
-        
-        // Error de red
-        const fallbackResponse = option === 'conservation'
-            ? generateConservationFallback(currentFood, analysisResults.isSpoiled)
-            : generateRecipeFallback(currentFood, analysisResults.isSpoiled);
-        
-        resultTitle.innerHTML = `${option === 'conservation' ? '✅' : '🍳'} ${currentFood} <span style="background:#F59E0B;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">⚠️ Sin conexión</span>`;
-        resultSubtitle.textContent = 'Modo offline activado';
-        resultContent.innerHTML = formatResponse(fallbackResponse);
-        
-        document.getElementById('modelStatus').innerHTML = 
-            `<i class="fas fa-wifi-slash" style="color:#EF4444"></i> Error de conexión`;
-        
-    } finally {
-        loading.style.display = 'none';
-        resultCard.style.display = 'block';
-        
-        setTimeout(() => {
-            resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-    }
-}
         
         function formatResponse(text) {
             if (typeof text !== 'string') {
