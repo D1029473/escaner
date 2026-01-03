@@ -1,3 +1,9 @@
 {
-  "type": "module"
+  "name": "save-and-taste",
+  "version": "6.0.0",
+  "description": "Dale una segunda oportunidad a tus alimentos",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  }
 }
