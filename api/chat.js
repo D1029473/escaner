@@ -58,7 +58,7 @@ export default async function handler(req, res) {
       // Construir mensajes en formato OpenAI
       const systemMessage = option === 'conservation'
         ? 'Eres un experto en conservación de alimentos. Responde de forma concisa y práctica en español.'
-        : 'Eres un chef creativo. Da recetas rápidas y deliciosas en español.';
+        : 'Eres un chef creativo. Da recetas completas pero concisas en español. Siempre incluye todos los pasos hasta el final.';
       
       const userMessage = construirPrompt(food, option, isSpoiled);
       
@@ -74,8 +74,9 @@ export default async function handler(req, res) {
             { role: 'system', content: systemMessage },
             { role: 'user', content: userMessage }
           ],
-          max_tokens: 300,
-          temperature: 0.7
+          max_tokens: option === 'recipe' ? 500 : 300, // Más tokens para recetas
+          temperature: 0.7,
+          top_p: 0.9
         }),
         signal: controller.signal
       });
@@ -155,7 +156,7 @@ function construirPrompt(food, option, isSpoiled) {
     if (isSpoiled) {
       return `Tengo ${food} en mal estado. ¿Es seguro cocinar? ¿Qué alternativas tengo?`;
     } else {
-      return `Dame una receta rápida y deliciosa con ${food}. Incluye ingredientes y pasos.`;
+      return `Dame UNA receta rápida con ${food}. Máximo 6 ingredientes y 4 pasos. Incluye TODOS los pasos hasta el final. Sé breve pero completa.`;
     }
   }
 }
