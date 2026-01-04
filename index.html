@@ -1209,7 +1209,18 @@
                         : (analysisResults.isSpoiled ? '🚫' : '🍳');
                     
                     // FIX: Asegurar que data.error sea string
-                    const errorMsg = data.error ? String(data.error).substring(0, 60) + '...' : 'IA no disponible';
+                    let errorMsg = 'IA no disponible';
+if (data && data.error) {
+  if (typeof data.error === 'string') {
+    errorMsg = data.error.substring(0, 60) + '...';
+  } else {
+    try {
+      errorMsg = JSON.stringify(data.error).substring(0, 60) + '...';
+    } catch (e) {
+      errorMsg = 'Error desconocido';
+    }
+  }
+}
                     
                     resultTitle.innerHTML = `${emoji} ${option === 'conservation' ? 'Consejos' : 'Receta'} <span style="background:#6B7280;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">📚 Base Local</span>`;
                     resultSubtitle.textContent = `${errorMsg}`;
