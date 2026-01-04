@@ -1,3 +1,4 @@
+// api/chat.js - VERSIÓN 8.0: Save & Taste API con fallback inteligente
 export default async function handler(req, res) {
   console.log('🤖 Save & Taste API Iniciada');
   
@@ -56,9 +57,10 @@ export default async function handler(req, res) {
     console.log('🚀 Intentando HuggingFace Router...');
     
     let respuestaIA = null;
+    let modeloUsado = null;
     
     try {
-      // FORMATO CORRECTO del router (según documentación oficial)
+      // FORMATO CORRECTO del router
       const endpoint = 'https://router.huggingface.co/hf-inference';
       
       // Modelos disponibles en el router
@@ -108,6 +110,7 @@ export default async function handler(req, res) {
             
             if (texto && texto.length > 20) {
               respuestaIA = texto;
+              modeloUsado = modelo;
               console.log(`🎯 Modelo ${modelo} funcionó!`);
               break;
             }
@@ -126,59 +129,14 @@ export default async function handler(req, res) {
     }
     
     // ============================================
-    // MÉTODO 2: SI EL ROUTER FALLA, USAR OPENROTER (ALTERNATIVA GRATUITA)
-    // ============================================
-    if (!respuestaIA) {
-      console.log('🔄 Router falló, probando con OpenRouter...');
-      
-      try {
-        // OpenRouter es una alternativa gratuita a HuggingFace
-        // Puedes obtener una clave en: https://openrouter.ai/keys
-        const OPENROUTER_KEY = process.env.OPENROUTER_KEY || '';
-        
-        if (OPENROUTER_KEY) {
-          const prompt = construirPromptOpenRouter(food, option, isSpoiled);
-          
-          const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${OPENROUTER_KEY}`,
-              'Content-Type': 'application/json',
-              'HTTP-Referer': 'https://save-and-taste.vercel.app', // Opcional
-              'X-Title': 'Save & Taste' // Opcional
-            },
-            body: JSON.stringify({
-              model: 'google/gemma-7b-it:free', // Modelo gratuito
-              messages: [
-                {
-                  role: 'user',
-                  content: prompt
-                }
-              ],
-              max_tokens: 300
-            })
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            respuestaIA = data.choices?.[0]?.message?.content || '';
-            console.log('✅ OpenRouter funcionó!');
-          }
-        }
-        
-      } catch (openrouterError) {
-        console.log('⚠️ OpenRouter también falló:', openrouterError.message);
-      }
-    }
-    
-    // ============================================
-    // MÉTODO 3: FALLBACK LOCAL MEJORADO
+    // MÉTODO 2: FALLBACK LOCAL MEJORADO
     // ============================================
     if (!respuestaIA) {
       console.log('🎯 Usando IA simulada local (fallback mejorado)...');
       
       // Generar respuesta local que parezca de IA
       respuestaIA = generarRespuestaLocal(food, option, isSpoiled);
+      modeloUsado = 'base_local_mejorada';
     }
     
     // ============================================
@@ -190,7 +148,7 @@ export default async function handler(req, res) {
       success: true,
       response: respuestaIA,
       source: respuestaIA.includes('🍽️') ? 'local_fallback' : 'ai_service',
-      model: 'mixed_sources',
+      model: modeloUsado || 'mixed_sources',
       debug: {
         timestamp: new Date().toISOString(),
         responseLength: respuestaIA.length,
@@ -231,22 +189,6 @@ function construirPrompt(food, option, isSpoiled) {
       return `[INST] Eres un chef y experto en seguridad. Tengo ${food} en mal estado. ¿Es seguro cocinar? Responde en español. [/INST]`;
     } else {
       return `[INST] Eres un chef creativo. Dame una receta deliciosa usando ${food}. Responde en español. [/INST]`;
-    }
-  }
-}
-
-function construirPromptOpenRouter(food, option, isSpoiled) {
-  if (option === 'conservation') {
-    if (isSpoiled) {
-      return `Como experto en seguridad alimentaria, ¿qué debo hacer si mi ${food} está en mal estado?`;
-    } else {
-      return `¿Cómo puedo conservar ${food} fresco por más tiempo?`;
-    }
-  } else {
-    if (isSpoiled) {
-      return `¿Es seguro cocinar con ${food} en mal estado? ¿Qué alternativas hay?`;
-    } else {
-      return `Proporciona una receta creativa y fácil usando ${food}.`;
     }
   }
 }
