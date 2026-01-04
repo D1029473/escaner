@@ -219,12 +219,15 @@
             </div>
             
             <video id="cameraFeed" style="display: none; width: 100%; border-radius: 12px;"></video>
-            <div id="cameraControls" style="display: none; margin-top: 20px;">
+            <div id="cameraControls" style="display: none; margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
                 <button class="btn btn-success" onclick="takePhoto()">
                     <i class="fas fa-camera"></i> Tomar Foto
                 </button>
+                <button class="btn btn-secondary" onclick="switchCamera()">
+                    <i class="fas fa-sync-alt"></i> Cambiar Cámara
+                </button>
                 <button class="btn btn-danger" onclick="stopCamera()">
-                    <i class="fas fa-stop"></i> Detener Cámara
+                    <i class="fas fa-stop"></i> Detener
                 </button>
             </div>
         </section>
@@ -317,10 +320,10 @@
         <!-- Controles de acción -->
         <div class="controls" id="actionControls" style="display: none;">
             <button class="btn btn-success" id="conservationBtn">
-                <i class="fas fa-shield-alt"></i> Conservación
+                <i class="fas fa-shield-alt"></i> Conservar y Salvar
             </button>
             <button class="btn btn-primary" id="recipeBtn">
-                <i class="fas fa-utensils"></i> Recetas
+                <i class="fas fa-utensils"></i> Recetas Creativas
             </button>
             <button class="btn btn-secondary" id="rescanBtn">
                 <i class="fas fa-redo"></i> Analizar Otro
@@ -836,7 +839,7 @@
         }
 
         // ============================================
-        // RESTO DEL CÓDIGO
+        // RESTO DEL CÓDIGO (MANTENIDO)
         // ============================================
         
         // Elementos DOM
@@ -947,44 +950,144 @@
             previewImage.src = url;
         }
         
-        // Cámara
+        // ============================================
+        // CÁMARA MEJORADA
+        // ============================================
         async function startCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
-                });
+                console.log('📷 Iniciando cámara...');
+                
+                // Detener cámara previa si existe
+                stopCamera();
+                
+                // Opciones de cámara
+                const constraints = {
+                    video: {
+                        facingMode: cameraFeed.dataset.mode || 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+                
+                // Solicitar acceso a la cámara
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 cameraFeed.srcObject = stream;
+                
+                // Esperar a que el video esté listo
+                await new Promise((resolve) => {
+                    cameraFeed.onloadedmetadata = () => {
+                        console.log('✅ Metadatos de cámara cargados');
+                        resolve();
+                    };
+                });
+                
+                // Reproducir el video
+                await cameraFeed.play();
+                
                 cameraFeed.style.display = 'block';
-                document.getElementById('cameraControls').style.display = 'block';
+                document.getElementById('cameraControls').style.display = 'flex';
+                console.log('🎥 Cámara activada correctamente');
+                
+                // Verificar que el video tenga contenido
+                setTimeout(() => {
+                    if (cameraFeed.videoWidth === 0 || cameraFeed.videoHeight === 0) {
+                        console.error('❌ Video sin dimensiones, posible problema de cámara');
+                        alert('La cámara no está mostrando contenido. Por favor, verifica los permisos o usa otra cámara.');
+                    }
+                }, 1000);
+                
             } catch (error) {
-                alert('No se pudo acceder a la cámara. Asegúrate de conceder los permisos necesarios.');
+                console.error('❌ Error al acceder a la cámara:', error);
+                
+                // Mostrar mensaje de error amigable
+                alert(`No se pudo acceder a la cámara: ${error.message}. 
+                
+Sugerencias:
+1. Asegúrate de conceder permisos de cámara
+2. Verifica que otra app no esté usando la cámara
+3. Intenta usar la cámara frontal
+4. O sube una foto desde tu galería`);
+
+                // Volver al modo de subida
+                document.getElementById('modeUpload').click();
             }
         }
-        
+
         function takePhoto() {
-            const canvas = document.createElement('canvas');
-            canvas.width = cameraFeed.videoWidth;
-            canvas.height = cameraFeed.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(cameraFeed, 0, 0);
-            
-            previewImage.src = canvas.toDataURL('image/jpeg');
-            previewImage.style.display = 'block';
-            cameraFeed.style.display = 'none';
-            document.getElementById('cameraControls').style.display = 'none';
-            
-            processImage(previewImage);
-        }
-        
-        function stopCamera() {
-            if (cameraFeed.srcObject) {
-                cameraFeed.srcObject.getTracks().forEach(track => track.stop());
+            try {
+                if (!cameraFeed.srcObject || cameraFeed.videoWidth === 0) {
+                    throw new Error('La cámara no está lista');
+                }
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = cameraFeed.videoWidth;
+                canvas.height = cameraFeed.videoHeight;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(cameraFeed, 0, 0);
+                
+                // Verificar que la foto no sea completamente negra
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                let darkPixels = 0;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    if (brightness < 30) darkPixels++;
+                }
+                
+                const darkPercent = (darkPixels / (data.length / 4)) * 100;
+                
+                if (darkPercent > 80) {
+                    alert('La foto parece demasiado oscura. Por favor, asegúrate de tener buena iluminación.');
+                    return;
+                }
+                
+                previewImage.src = canvas.toDataURL('image/jpeg', 0.9);
+                previewImage.style.display = 'block';
                 cameraFeed.style.display = 'none';
                 document.getElementById('cameraControls').style.display = 'none';
+                
+                processImage(previewImage);
+                
+            } catch (error) {
+                console.error('❌ Error al tomar foto:', error);
+                alert('Error al capturar la foto: ' + error.message);
             }
         }
+
+        function switchCamera() {
+            stopCamera();
+            
+            // Cambiar entre frontal y trasera
+            const currentMode = cameraFeed.dataset.mode || 'environment';
+            const newMode = currentMode === 'environment' ? 'user' : 'environment';
+            
+            cameraFeed.dataset.mode = newMode;
+            
+            // Pequeño delay antes de reiniciar
+            setTimeout(() => {
+                startCamera();
+            }, 500);
+        }
+
+        function stopCamera() {
+            if (cameraFeed.srcObject) {
+                const tracks = cameraFeed.srcObject.getTracks();
+                tracks.forEach(track => {
+                    track.stop();
+                    console.log('🛑 Cámara detenida');
+                });
+                cameraFeed.srcObject = null;
+            }
+            cameraFeed.style.display = 'none';
+            document.getElementById('cameraControls').style.display = 'none';
+        }
         
-        // Procesar imagen
+        // ============================================
+        // PROCESAMIENTO DE IMAGEN MEJORADO
+        // ============================================
         function processImage(imgElement) {
             loading.style.display = 'flex';
             spoilAnalysis.style.display = 'none';
@@ -1006,9 +1109,10 @@
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
             
-            const maxWidth = 300;
-            const scale = maxWidth / imgElement.width;
-            canvas.width = maxWidth;
+            // Redimensionar para procesamiento
+            const maxSize = 400;
+            const scale = Math.min(maxSize / imgElement.width, maxSize / imgElement.height);
+            canvas.width = imgElement.width * scale;
             canvas.height = imgElement.height * scale;
             
             ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
@@ -1016,44 +1120,125 @@
             const data = imageData.data;
             
             let totalPixels = data.length / 4;
-            let darkPixels = 0;
-            let brownPixels = 0;
-            let greenPixels = 0;
-            let brightPixels = 0;
+            let darkPixels = 0;      // Oscuridad real (no fondo)
+            let brownPixels = 0;     // Marrón (madurez)
+            let greenPixels = 0;     // Verde moho
+            let brightPixels = 0;    // Brillante (fresco)
+            let blackBackgroundPixels = 0; // Fondo negro a ignorar
             
+            // Primero detectar si hay un fondo negro dominante
+            let leftEdgeDark = 0, rightEdgeDark = 0, topEdgeDark = 0, bottomEdgeDark = 0;
+            const edgeThreshold = 0.2; // 20% de los bordes
+            
+            // Analizar bordes para detectar fondos negros
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const i = (y * canvas.width + x) * 4;
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    const brightness = (r + g + b) / 3;
+                    
+                    // Es borde?
+                    if (x < canvas.width * edgeThreshold || 
+                        x > canvas.width * (1 - edgeThreshold) ||
+                        y < canvas.height * edgeThreshold || 
+                        y > canvas.height * (1 - edgeThreshold)) {
+                        if (brightness < 30) {
+                            if (x < canvas.width * edgeThreshold) leftEdgeDark++;
+                            if (x > canvas.width * (1 - edgeThreshold)) rightEdgeDark++;
+                            if (y < canvas.height * edgeThreshold) topEdgeDark++;
+                            if (y > canvas.height * (1 - edgeThreshold)) bottomEdgeDark++;
+                        }
+                    }
+                }
+            }
+            
+            // Si los bordes son mayormente negros, es probable que sea fondo
+            const edgePixels = (canvas.width * edgeThreshold * 2 + canvas.height * edgeThreshold * 2) * 2;
+            const isBlackBackground = (leftEdgeDark + rightEdgeDark + topEdgeDark + bottomEdgeDark) > edgePixels * 0.7;
+            
+            // Umbral para ignorar en análisis (si hay fondo negro)
+            const ignoreThreshold = isBlackBackground ? 30 : 15;
+            
+            // Análisis principal ignorando fondos oscuros
             for (let i = 0; i < data.length; i += 4) {
                 const r = data[i];
                 const g = data[i + 1];
                 const b = data[i + 2];
                 const brightness = (r + g + b) / 3;
                 
-                if (brightness < 50) darkPixels++;
-                if (r > 100 && g > 50 && b < 100 && Math.abs(r - g) < 60) brownPixels++;
-                if (g > r + 30 && g > b + 30 && g > 100) greenPixels++;
-                if (brightness > 180 && Math.abs(r - g) < 50 && Math.abs(g - b) < 50) brightPixels++;
+                // Si es muy oscuro y estamos en modo "fondo negro", ignorar
+                if (isBlackBackground && brightness < ignoreThreshold) {
+                    blackBackgroundPixels++;
+                    continue; // Saltar este píxel en el análisis
+                }
+                
+                // Análisis normal
+                if (brightness < 50) {
+                    darkPixels++;
+                }
+                
+                // Detectar marrón (madurez)
+                if (r > 100 && g > 50 && b < 100 && Math.abs(r - g) < 60) {
+                    brownPixels++;
+                }
+                
+                // Detectar verde moho
+                if (g > r + 30 && g > b + 30 && g > 100) {
+                    greenPixels++;
+                }
+                
+                // Detectar colores vivos (fresco)
+                if (brightness > 180 && Math.abs(r - g) < 50 && Math.abs(g - b) < 50) {
+                    brightPixels++;
+                }
             }
             
-            const darkPercent = Math.min(100, Math.round((darkPixels / totalPixels) * 200));
-            const brownPercent = Math.min(100, Math.round((brownPixels / totalPixels) * 150));
-            const greenPercent = Math.min(100, Math.round((greenPixels / totalPixels) * 300));
-            const brightPercent = Math.min(100, Math.round((brightPixels / totalPixels) * 100));
+            // Calcular porcentajes excluyendo fondos negros
+            const analyzedPixels = totalPixels - blackBackgroundPixels;
             
-            const freshness = Math.max(0, 100 - (darkPercent * 0.4 + brownPercent * 0.3 + greenPercent * 0.3));
-            isSpoiled = freshness < 70 || greenPercent > 15 || darkPercent > 25;
+            if (analyzedPixels < totalPixels * 0.1) {
+                // Demasiados píxeles ignorados, probablemente imagen oscura
+                console.warn('⚠️ Imagen muy oscura, usando valores por defecto');
+                
+                analysisResults = {
+                    freshness: 75,
+                    moldRisk: 10,
+                    overripe: 15,
+                    discoloration: 10,
+                    isSpoiled: false,
+                    brightAreas: 60,
+                    warning: 'Imagen oscura - análisis limitado',
+                    analyzedPixels: Math.round((analyzedPixels / totalPixels) * 100)
+                };
+            } else {
+                // Cálculos normales
+                const darkPercent = Math.min(100, Math.round((darkPixels / analyzedPixels) * 150));
+                const brownPercent = Math.min(100, Math.round((brownPixels / analyzedPixels) * 120));
+                const greenPercent = Math.min(100, Math.round((greenPixels / analyzedPixels) * 200));
+                const brightPercent = Math.min(100, Math.round((brightPixels / analyzedPixels) * 100));
+                
+                const freshness = Math.max(0, 100 - (darkPercent * 0.4 + brownPercent * 0.3 + greenPercent * 0.3));
+                const isSpoiled = freshness < 70 || greenPercent > 20 || darkPercent > 30;
+                
+                analysisResults = {
+                    freshness: Math.round(freshness),
+                    moldRisk: Math.round(greenPercent),
+                    overripe: Math.round(brownPercent),
+                    discoloration: Math.round(darkPercent),
+                    isSpoiled: isSpoiled,
+                    brightAreas: Math.round(brightPercent),
+                    analyzedPixels: Math.round((analyzedPixels / totalPixels) * 100)
+                };
+            }
             
-            analysisResults = {
-                freshness: Math.round(freshness),
-                moldRisk: Math.round(greenPercent),
-                overripe: Math.round(brownPercent),
-                discoloration: Math.round(darkPercent),
-                isSpoiled: isSpoiled,
-                brightAreas: Math.round(brightPercent)
-            };
-            
+            console.log('📊 Análisis mejorado:', analysisResults);
             updateAnalysisUI();
         }
         
         function updateAnalysisUI() {
+            // Actualizar barras de progreso
             animateProgress('freshnessBar', 'freshnessText', analysisResults.freshness);
             animateProgress('moldBar', 'moldText', analysisResults.moldRisk);
             animateProgress('ripeBar', 'ripeText', analysisResults.overripe);
@@ -1074,6 +1259,34 @@
                 summary.textContent = '🚨 Se detectaron signos claros de deterioro. Considera descartarlo o usar con precaución.';
                 badge.textContent = '🚨 REVISAR';
                 badge.style.background = '#FF3B30';
+            }
+            
+            // Añadir advertencia si la imagen es oscura
+            if (analysisResults.warning || analysisResults.analyzedPixels < 50) {
+                const warningDiv = document.createElement('div');
+                warningDiv.style.cssText = `
+                    background: #FEF3C7;
+                    border: 1px solid #F59E0B;
+                    border-radius: 8px;
+                    padding: 12px;
+                    margin-top: 15px;
+                    color: #92400E;
+                `;
+                
+                let warningText = analysisResults.warning || 
+                                 'La imagen es muy oscura. El análisis puede no ser preciso.';
+                
+                warningDiv.innerHTML = `
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    <strong>Nota:</strong> ${warningText}
+                    <br>
+                    <small>Sugerencia: Usa mejor iluminación o sube una foto más clara.</small>
+                `;
+                
+                // Insertar después del resumen del estado
+                if (summary && summary.parentNode) {
+                    summary.parentNode.appendChild(warningDiv);
+                }
             }
             
             spoilAnalysis.style.display = 'block';
@@ -1098,7 +1311,9 @@
             }, 20);
         }
         
-        // Selección de alimento
+        // ============================================
+        // SELECCIÓN DE ALIMENTO
+        // ============================================
         document.querySelectorAll('.food-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 currentFood = this.dataset.food;
@@ -1119,7 +1334,9 @@
             actionControls.scrollIntoView({ behavior: 'smooth' });
         }
         
-        // Llamada a la API
+        // ============================================
+        // LLAMADA A LA API MEJORADA
+        // ============================================
         document.getElementById('conservationBtn').addEventListener('click', () => callAPI('conservation'));
         document.getElementById('recipeBtn').addEventListener('click', () => callAPI('recipe'));
         document.getElementById('rescanBtn').addEventListener('click', resetApp);
@@ -1133,29 +1350,6 @@
             loading.style.display = 'flex';
             actionControls.style.display = 'none';
             resultCard.style.display = 'none';
-            
-            // Mostrar estado de conexión IA
-            loading.innerHTML = `
-                <div class="spinner"></div>
-                <h3>Conectando con Inteligencia Artificial</h3>
-                <p>Probando modelos de HuggingFace...</p>
-                <div id="modelStatus" style="font-size: 14px; color: #6B7280; margin-top: 10px;">
-                    <i class="fas fa-sync-alt fa-spin"></i> Iniciando conexión...
-                </div>
-            `;
-            
-            console.log('🚀 Conectando con HuggingFace...');
-            
-            // Simular actualización de estado
-            const modelos = ['Qwen/Qwen2.5', 'Mistral-7B'];
-            let modeloIndex = 0;
-            const statusInterval = setInterval(() => {
-                if (modeloIndex < modelos.length) {
-                    document.getElementById('modelStatus').innerHTML = 
-                        `<i class="fas fa-microchip"></i> Probando: ${modelos[modeloIndex]}`;
-                    modeloIndex++;
-                }
-            }, 1500);
             
             try {
                 const response = await fetch('/api/chat', {
@@ -1172,33 +1366,35 @@
                     })
                 });
                 
-                clearInterval(statusInterval);
+                if (!response.ok) throw new Error(`Error ${response.status}`);
                 
                 const data = await response.json();
                 console.log('📊 Respuesta completa:', JSON.stringify(data, null, 2));
                 
                 // CASO 1: IA funcionó
                 if (data.success && data.response && data.response.length > 20) {
-                    console.log(`✅ IA funcionó con modelo: ${data.model || 'desconocido'}`);
+                    console.log(`✅ Contenido generado exitosamente`);
                     
                     const emoji = option === 'conservation' 
                         ? (analysisResults.isSpoiled ? '⚠️' : '✅')
                         : (analysisResults.isSpoiled ? '🚫' : '🍳');
                     
-                    const modelName = data.model ? data.model.split('/')[0] : 'IA';
-                    const modelBadge = `<span style="background:#10B981;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">🤖 ${modelName}</span>`;
+                    // Verificar si es respuesta local o de IA real
+                    const esRespuestaLocal = data.response.includes('🍽️') || data.response.includes('⏱️');
                     
-                    resultTitle.innerHTML = `${emoji} ${option === 'conservation' ? 'Consejos de Conservación' : 'Receta Creativa'} ${modelBadge}`;
-                    resultSubtitle.textContent = `Generado por ${data.model || 'inteligencia artificial'}`;
+                    if (esRespuestaLocal || data.source === 'local_fallback') {
+                        resultTitle.innerHTML = `${emoji} ${option === 'conservation' ? 'Consejos Expertos' : 'Receta Creativa'} <span style="background:#8B5CF6;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">✨ Experto</span>`;
+                        resultSubtitle.textContent = 'De nuestra base de conocimiento especializado';
+                    } else {
+                        resultTitle.innerHTML = `${emoji} ${option === 'conservation' ? 'Consejos de IA' : 'Receta por IA'} <span style="background:#10B981;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">🤖 IA</span>`;
+                        resultSubtitle.textContent = 'Generado por inteligencia artificial';
+                    }
+                    
                     resultContent.innerHTML = formatResponse(data.response);
-                    
-                    // Mostrar éxito
-                    document.getElementById('modelStatus').innerHTML = 
-                        `<i class="fas fa-check-circle" style="color:#10B981"></i> ¡IA funcionó!`;
                 }
-                // CASO 2: IA falló pero API respondió
-                else if (data.success === false) {
-                    console.log('⚠️ IA falló, usando base local');
+                // CASO 2: IA falló, usar base de datos local
+                else {
+                    console.log('⚠️ IA no disponible, usando base local');
                     
                     const fallbackResponse = option === 'conservation'
                         ? generateConservationFallback(currentFood, analysisResults.isSpoiled)
@@ -1208,64 +1404,39 @@
                         ? (analysisResults.isSpoiled ? '⚠️' : '✅')
                         : (analysisResults.isSpoiled ? '🚫' : '🍳');
                     
-                    // FIX: Asegurar que data.error sea string
                     let errorMsg = 'IA no disponible';
-if (data && data.error) {
-  if (typeof data.error === 'string') {
-    errorMsg = data.error.substring(0, 60) + '...';
-  } else {
-    try {
-      errorMsg = JSON.stringify(data.error).substring(0, 60) + '...';
-    } catch (e) {
-      errorMsg = 'Error desconocido';
-    }
-  }
-}
+                    if (data && data.error) {
+                        if (typeof data.error === 'string') {
+                            errorMsg = data.error.substring(0, 60) + '...';
+                        } else {
+                            try {
+                                errorMsg = JSON.stringify(data.error).substring(0, 60) + '...';
+                            } catch (e) {
+                                errorMsg = 'Error desconocido';
+                            }
+                        }
+                    }
                     
                     resultTitle.innerHTML = `${emoji} ${option === 'conservation' ? 'Consejos' : 'Receta'} <span style="background:#6B7280;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">📚 Base Local</span>`;
                     resultSubtitle.textContent = `${errorMsg}`;
                     resultContent.innerHTML = formatResponse(fallbackResponse);
-                    
-                    // Mostrar error
-                    document.getElementById('modelStatus').innerHTML = 
-                        `<i class="fas fa-exclamation-triangle" style="color:#F59E0B"></i> ${errorMsg}`;
-                }
-                // CASO 3: Respuesta inesperada
-                else {
-                    console.log('❌ Respuesta inesperada, usando fallback');
-                    
-                    const fallbackResponse = option === 'conservation'
-                        ? generateConservationFallback(currentFood, analysisResults.isSpoiled)
-                        : generateRecipeFallback(currentFood, analysisResults.isSpoiled);
-                    
-                    resultTitle.innerHTML = `${option === 'conservation' ? '✅' : '🍳'} ${currentFood} <span style="background:#F59E0B;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">⚠️ Error</span>`;
-                    resultSubtitle.textContent = 'Respuesta inesperada de la API';
-                    resultContent.innerHTML = formatResponse(fallbackResponse);
-                    
-                    document.getElementById('modelStatus').innerHTML = 
-                        `<i class="fas fa-exclamation-circle" style="color:#EF4444"></i> Error en respuesta API`;
                 }
                 
             } catch (error) {
-                clearInterval(statusInterval);
-                console.error('❌ Error de conexión:', error);
+                console.error('❌ Error en llamada API:', error.message);
                 
-                // Error de red
+                // FALLBACK 100% LOCAL
                 const fallbackResponse = option === 'conservation'
                     ? generateConservationFallback(currentFood, analysisResults.isSpoiled)
                     : generateRecipeFallback(currentFood, analysisResults.isSpoiled);
                 
-                resultTitle.innerHTML = `${option === 'conservation' ? '✅' : '🍳'} ${currentFood} <span style="background:#F59E0B;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">⚠️ Sin conexión</span>`;
+                resultTitle.innerHTML = `${option === 'conservation' ? '✅' : '🍳'} ${currentFood} <span style="background:#F59E0B;color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:10px;">⚠️ Sin conexión</span>';
                 resultSubtitle.textContent = 'Modo offline activado';
                 resultContent.innerHTML = formatResponse(fallbackResponse);
-                
-                document.getElementById('modelStatus').innerHTML = 
-                    `<i class="fas fa-wifi-slash" style="color:#EF4444"></i> Error de conexión`;
                 
             } finally {
                 loading.style.display = 'none';
                 resultCard.style.display = 'block';
-                
                 setTimeout(() => {
                     resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 100);
@@ -1324,6 +1495,24 @@ if (data && data.error) {
         
         // Inicialización
         document.getElementById('modeUpload').click();
+        
+        // Verificar disponibilidad de cámara al cargar
+        async function checkCameraAvailability() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                if (videoDevices.length === 0) {
+                    console.log('❌ No hay cámaras disponibles');
+                    // Ocultar el modo cámara
+                    document.getElementById('modeCamera').style.display = 'none';
+                }
+            } catch (error) {
+                console.log('⚠️ No se pudo verificar cámaras:', error);
+            }
+        }
+        
+        checkCameraAvailability();
     </script>
 </body>
 </html>
