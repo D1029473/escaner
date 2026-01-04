@@ -45,15 +45,22 @@ export default async function handler(req, res) {
     let respuestaIA = null;
     let modeloUsado = null;
     
-    // ENDPOINT CORRECTO (sin /hf-inference que no existe)
-    const API_URL = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct";
+    // NUEVO ENDPOINT CORRECTO (formato OpenAI-compatible)
+    const API_URL = "https://router.huggingface.co/v1/chat/completions";
+    const MODEL = "meta-llama/Llama-3.2-3B-Instruct";
     
-    const prompt = construirPrompt(food, option, isSpoiled);
-    console.log(`🚀 Llamando a: ${API_URL}`);
+    console.log(`🚀 Llamando a: ${API_URL} con modelo ${MODEL}`);
     
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 25000);
+      
+      // Construir mensajes en formato OpenAI
+      const systemMessage = option === 'conservation'
+        ? 'Eres un experto en conservación de alimentos. Responde de forma concisa y práctica en español.'
+        : 'Eres un chef creativo. Da recetas rápidas y deliciosas en español.';
+      
+      const userMessage = construirPrompt(food, option, isSpoiled);
       
       const response = await fetch(API_URL, {
         method: 'POST',
@@ -62,17 +69,13 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: 300,
-            temperature: 0.7,
-            top_p: 0.9,
-            return_full_text: false
-          },
-          options: {
-            use_cache: true,
-            wait_for_model: true
-          }
+          model: MODEL,
+          messages: [
+            { role: 'system', content: systemMessage },
+            { role: 'user', content: userMessage }
+          ],
+          max_tokens: 300,
+          temperature: 0.7
         }),
         signal: controller.signal
       });
@@ -85,14 +88,14 @@ export default async function handler(req, res) {
         const data = await response.json();
         console.log('📊 Respuesta recibida');
         
-        let texto = extraerTexto(data);
-        
-        if (texto && texto.length > 20) {
-          respuestaIA = texto;
-          modeloUsado = 'Llama-3.2-3B';
-          console.log(`✅ IA funcionó: ${texto.substring(0, 100)}...`);
-        } else {
-          console.log('⚠️ Texto insuficiente de IA');
+        // Extraer del formato OpenAI
+        if (data.choices && data.choices.length > 0) {
+          const message = data.choices[0].message;
+          if (message && message.content) {
+            respuestaIA = message.content;
+            modeloUsado = MODEL;
+            console.log(`✅ IA funcionó: ${respuestaIA.substring(0, 100)}...`);
+          }
         }
       } else {
         const errorText = await response.text().catch(() => 'Sin detalles');
@@ -144,36 +147,20 @@ export default async function handler(req, res) {
 function construirPrompt(food, option, isSpoiled) {
   if (option === 'conservation') {
     if (isSpoiled) {
-      return `Eres un experto en seguridad alimentaria. Mi ${food} está en mal estado. Dame 3 consejos prácticos sobre qué hacer. Responde en español, directo, sin introducción.`;
+      return `Mi ${food} está en mal estado. Dame 3 consejos prácticos sobre qué hacer.`;
     } else {
-      return `Eres un especialista en conservación. Dame 3 consejos concretos para conservar ${food} fresco por más tiempo. Español, directo.`;
+      return `Dame 3 consejos concretos para conservar ${food} fresco por más tiempo.`;
     }
   } else {
     if (isSpoiled) {
-      return `Eres un chef experto. Tengo ${food} en mal estado. ¿Es seguro cocinar? ¿Qué alternativas tengo? Responde en español, directo.`;
+      return `Tengo ${food} en mal estado. ¿Es seguro cocinar? ¿Qué alternativas tengo?`;
     } else {
-      return `Eres un chef creativo. Dame una receta rápida y deliciosa con ${food}. Incluye ingredientes y pasos. Español, directo.`;
+      return `Dame una receta rápida y deliciosa con ${food}. Incluye ingredientes y pasos.`;
     }
   }
 }
 
-function extraerTexto(data) {
-  try {
-    if (Array.isArray(data)) {
-      if (data[0]?.generated_text) return data[0].generated_text;
-      if (typeof data[0] === 'string') return data[0];
-    }
-    if (data.generated_text) return data.generated_text;
-    if (data.text) return data.text;
-    if (typeof data === 'string') return data;
-    
-    console.log('⚠️ Formato desconocido:', JSON.stringify(data).substring(0, 200));
-    return null;
-  } catch (e) {
-    console.error('Error extrayendo texto:', e);
-    return null;
-  }
-}
+// Ya no necesitamos extraerTexto porque usamos formato OpenAI estándar
 
 function sendFallbackResponse(food, option, isSpoiled, res) {
   const response = option === 'conservation'
