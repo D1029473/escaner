@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Save & Taste · Dale una segunda oportunidad</title>
+    <title>Save & Taste · Dale una segunda oportunidad a tus alimentos</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♻️</text></svg>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -99,7 +99,7 @@
             </div>
             
             <img id="previewImage" alt="Preview">
-            <video id="cameraFeed" autoplay playsinline></video>
+            <video id="cameraFeed" autoplay playsinline muted webkit-playsinline x5-playsinline></video>
             
             <div id="cameraControls" style="display: none; margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
                 <button class="btn btn-success" onclick="capturePhoto()">
@@ -229,6 +229,55 @@
             });
         });
 
+        // Detectar Android y verificar soporte de cámara
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        
+        if (isAndroid) {
+            console.log('📱 Android detectado');
+        } else if (isIOS) {
+            console.log('📱 iOS detectado');
+        }
+        
+        // Verificar soporte de cámara al cargar
+        (async function checkCameraSupport() {
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    console.warn('⚠️ getUserMedia no disponible');
+                    document.querySelector('[data-mode="camera"]').style.opacity = '0.5';
+                    document.querySelector('[data-mode="camera"]').style.pointerEvents = 'none';
+                    return;
+                }
+                
+                // Verificar permisos
+                if (navigator.permissions && navigator.permissions.query) {
+                    const permissionStatus = await navigator.permissions.query({ name: 'camera' });
+                    console.log(`📷 Permiso de cámara: ${permissionStatus.state}`);
+                    
+                    permissionStatus.addEventListener('change', () => {
+                        console.log(`📷 Permiso cambiado a: ${permissionStatus.state}`);
+                    });
+                }
+                
+                // Listar cámaras disponibles
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                console.log(`📷 Cámaras disponibles: ${videoDevices.length}`);
+                
+                videoDevices.forEach((device, i) => {
+                    console.log(`  ${i + 1}. ${device.label || 'Cámara ' + (i + 1)}`);
+                });
+                
+                if (videoDevices.length === 0) {
+                    console.warn('⚠️ No se detectaron cámaras');
+                    alert('⚠️ No se detectaron cámaras en tu dispositivo. Usa el modo "Subir Foto".');
+                }
+                
+            } catch (err) {
+                console.error('❌ Error verificando cámara:', err);
+            }
+        })();
+
         // Upload
         fileInput.addEventListener('change', e => {
             const file = e.target.files[0];
@@ -265,58 +314,184 @@
             }
         });
 
-        // Camera - FUNCIONES CORREGIDAS
+        // Camera - OPTIMIZADO PARA ANDROID
         async function startCamera() {
             try {
+                console.log('📷 Iniciando cámara para móvil...');
+                
                 if (stream) stopCamera();
                 
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+                // Configuración optimizada para Android
+                const constraints = {
+                    video: {
+                        facingMode: facingMode,
+                        width: { ideal: 1920, max: 1920 },
+                        height: { ideal: 1080, max: 1080 }
+                    },
                     audio: false
+                };
+                
+                // Solicitar permisos explícitamente
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                // Configurar video element
+                cameraFeed.srcObject = stream;
+                
+                // Esperar a que el video esté listo
+                await new Promise((resolve, reject) => {
+                    cameraFeed.onloadedmetadata = () => {
+                        console.log('✅ Metadata cargada');
+                        resolve();
+                    };
+                    cameraFeed.onerror = reject;
+                    
+                    // Timeout de seguridad
+                    setTimeout(() => reject(new Error('Timeout cargando video')), 5000);
                 });
                 
-                cameraFeed.srcObject = stream;
+                // Reproducir
+                await cameraFeed.play();
+                
                 cameraFeed.style.display = 'block';
                 cameraControls.style.display = 'flex';
                 
-                console.log('✅ Cámara iniciada');
+                console.log('✅ Cámara activa');
+                console.log(`📐 Resolución: ${cameraFeed.videoWidth}x${cameraFeed.videoHeight}`);
+                
             } catch (err) {
                 console.error('❌ Error cámara:', err);
-                alert('No se pudo acceder a la cámara: ' + err.message);
+                
+                let errorMsg = 'No se pudo acceder a la cámara.';
+                
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    errorMsg = '⚠️ Permiso denegado. Ve a Configuración > Apps > Permisos > Cámara y activa el permiso.';
+                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    errorMsg = '❌ No se encontró ninguna cámara en tu dispositivo.';
+                } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                    errorMsg = '⚠️ La cámara está siendo usada por otra aplicación. Cierra otras apps y vuelve a intentar.';
+                } else if (err.name === 'OverconstrainedError') {
+                    errorMsg = '⚠️ La cámara no soporta la resolución solicitada. Intentando con configuración alternativa...';
+                    
+                    // Reintentar con resolución más baja
+                    try {
+                        const fallbackConstraints = {
+                            video: {
+                                facingMode: facingMode,
+                                width: { ideal: 640 },
+                                height: { ideal: 480 }
+                            },
+                            audio: false
+                        };
+                        
+                        stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+                        cameraFeed.srcObject = stream;
+                        await cameraFeed.play();
+                        cameraFeed.style.display = 'block';
+                        cameraControls.style.display = 'flex';
+                        console.log('✅ Cámara activa con resolución reducida');
+                        return;
+                    } catch (fallbackErr) {
+                        errorMsg = '❌ No se pudo iniciar la cámara con ninguna configuración.';
+                    }
+                } else if (err.name === 'SecurityError') {
+                    errorMsg = '🔒 Error de seguridad. Asegúrate de estar usando HTTPS.';
+                }
+                
+                alert(errorMsg + '\n\n💡 Tip: Prueba el modo "Subir Foto" como alternativa.');
+                
+                // Volver al modo upload
                 document.querySelector('[data-mode="upload"]').click();
             }
         }
 
         function capturePhoto() {
-            if (!stream) { alert('Cámara no activa'); return; }
-            
-            const canvas = document.createElement('canvas');
-            canvas.width = cameraFeed.videoWidth;
-            canvas.height = cameraFeed.videoHeight;
-            
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(cameraFeed, 0, 0);
-            
-            previewImage.src = canvas.toDataURL('image/jpeg', 0.9);
-            previewImage.style.display = 'block';
-            cameraFeed.style.display = 'none';
-            cameraControls.style.display = 'none';
-            
-            stopCamera();
-            processImage(previewImage);
+            try {
+                if (!stream || !cameraFeed.videoWidth) {
+                    alert('⚠️ Cámara no lista. Espera un momento y vuelve a intentar.');
+                    return;
+                }
+                
+                console.log('📸 Capturando foto...');
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = cameraFeed.videoWidth;
+                canvas.height = cameraFeed.videoHeight;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(cameraFeed, 0, 0);
+                
+                // Verificar que la captura no esté vacía
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const pixels = imageData.data;
+                let hasContent = false;
+                
+                for (let i = 0; i < pixels.length; i += 4) {
+                    if (pixels[i] !== 0 || pixels[i+1] !== 0 || pixels[i+2] !== 0) {
+                        hasContent = true;
+                        break;
+                    }
+                }
+                
+                if (!hasContent) {
+                    alert('⚠️ La foto está vacía. Asegúrate de que la cámara esté enfocando correctamente.');
+                    return;
+                }
+                
+                previewImage.src = canvas.toDataURL('image/jpeg', 0.92);
+                previewImage.style.display = 'block';
+                cameraFeed.style.display = 'none';
+                cameraControls.style.display = 'none';
+                
+                stopCamera();
+                processImage(previewImage);
+                
+                console.log('✅ Foto capturada');
+                
+            } catch (err) {
+                console.error('❌ Error capturando:', err);
+                alert('Error al capturar la foto: ' + err.message);
+            }
         }
 
-        function switchCamera() {
-            facingMode = facingMode === 'environment' ? 'user' : 'environment';
-            startCamera();
+        async function switchCamera() {
+            try {
+                console.log('🔄 Cambiando cámara...');
+                
+                // Verificar que hay múltiples cámaras
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                if (videoDevices.length < 2) {
+                    alert('⚠️ Solo hay una cámara disponible en tu dispositivo.');
+                    return;
+                }
+                
+                stopCamera();
+                
+                // Alternar entre frontal y trasera
+                facingMode = facingMode === 'environment' ? 'user' : 'environment';
+                console.log(`📷 Cambiando a: ${facingMode === 'environment' ? 'Trasera' : 'Frontal'}`);
+                
+                // Pequeño delay para que el usuario vea el cambio
+                setTimeout(() => {
+                    startCamera();
+                }, 300);
+                
+            } catch (err) {
+                console.error('❌ Error cambiando cámara:', err);
+                alert('No se pudo cambiar de cámara. Intenta de nuevo.');
+            }
         }
 
         function stopCamera() {
             if (stream) {
-                stream.getTracks().forEach(track => track.stop());
+                stream.getTracks().forEach(track => {
+                    track.stop();
+                    console.log(`🛑 Track detenido: ${track.kind}`);
+                });
                 stream = null;
-                console.log('🛑 Cámara detenida');
             }
+            cameraFeed.srcObject = null;
         }
 
         // URL
